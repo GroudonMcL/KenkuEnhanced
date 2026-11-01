@@ -13,6 +13,7 @@
 //   /api/scenes   → read / save your scenes (stored in data/scenes.json)
 //   /api/sounds/* → Freesound search + download to your downloads folder (helper/sounds.js)
 //   /api/links    → your saved links + the Tabletop Audio SoundPad list (helper/links.js)
+//   /models/*, /api/vibe/* → picture model files + picture fetcher for ✨ Vibe (helper/vibe.js)
 
 const path = require("path");
 const express = require("express");
@@ -361,6 +362,13 @@ app.use("/api/sounds", soundsRouter);
 // 10. Saved links + Tabletop Audio SoundPad list (see helper/links.js)
 // ---------------------------------------------------------------------------
 app.use("/api/links", require("./links")(jsonOnly));
+
+// ---------------------------------------------------------------------------
+// 11. Image → vibe: model files (cached in data/models) + picture fetcher
+// ---------------------------------------------------------------------------
+const vibe = require("./vibe")();
+app.use("/models", vibe.models);
+app.use("/api/vibe", vibe.api);
 
 // ---------------------------------------------------------------------------
 // Start

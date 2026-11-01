@@ -54,6 +54,7 @@
   Links.init();
   Settings.init();
   Scenes.init();
+  Vibe.init();
   window.addEventListener("settings-saved", checkHealth); // Kenku address may have changed
 
   checkHealth();

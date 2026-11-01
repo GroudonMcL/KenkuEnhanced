@@ -84,10 +84,28 @@ API keys live (they never reach the browser) and where files get written to disk
 - Ideas for later: several links per scene, a "close the old SoundPad tab" helper if a Kenku
   fork ever exposes tab control.
 
-### Phase 5 – Image → vibe
-- Step 1: manual tags typed per scene → search sounds / suggest a scene.
-- Step 2: automatic tags, either Transformers.js CLIP zero-shot in the browser
-  (free, offline, slower first load) or a cloud vision API via the helper (key in config).
+### Phase 5 – Image → vibe (built)
+- **Step 1, tags:** scenes have `tags: [...]` (scene editor → Tags). The ✨ Vibe dialog takes
+  words and suggests matching scenes (tags count fully, name/notes half, places weigh more),
+  SoundPads (name/description/categories), Freesound searches (one per word, using each
+  word's `sound` query) and two YouTube searches (ambience + music). It can also make a
+  "new scene with these tags" from what's playing.
+- **Step 2, automatic tags:** CLIP zero-shot in the browser (Transformers.js 4.3.2 from
+  jsDelivr, `Xenova/clip-vit-base-patch32`, q8 text + vision models ≈ 153 MB).
+  - Model files go through the helper's `/models/*` route, which downloads them once from
+    Hugging Face into `data/models` (streaming to the page so progress shows). It works
+    offline afterwards and survives clearing the browser.
+  - The vocabulary is `dashboard/js/vibe-words.js`: groups place/weather/time/mood, each
+    entry with a CLIP prompt and synonyms. Softmax is taken per group, then confident
+    picks are kept.
+  - Prompt embeddings are cached in localStorage, so after the first run only the vision
+    model is needed.
+  - Pictures come from file / drag-drop / paste / URL. A URL is fetched through
+    `/api/vibe/image`, because the page can't read other sites' pictures.
+- Not done: a cloud vision API (e.g. Claude) for richer descriptions. Possible later as an
+  optional provider with a key in Settings.
+- Ideas for later: "✨ from picture" inside the scene editor, a per-campaign vocabulary, and
+  using the YouTube/Freesound results' own tags to learn better words.
 
 ### Phase 6 – Packaging & updates
 - Today: `Start KenkuEnhanced.bat` + a "new version available" badge (GitHub releases).

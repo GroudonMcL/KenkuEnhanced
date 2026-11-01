@@ -66,6 +66,7 @@ const Scenes = (() => {
       youtube: { players: [], stopOthers: true },
       link: "",
       linkAuto: false,
+      tags: [],
       notes: "",
       ...parts,
     };
@@ -101,7 +102,8 @@ const Scenes = (() => {
       b.style.setProperty("--scene-color", scene.color || "#888");
       b.classList.toggle("on", scene.id === activeId);
       b.classList.toggle("busy", scene.id === busyId);
-      b.title = editMode ? "Click to edit" : `Start this scene${i < 9 ? ` (key ${i + 1})` : ""}`;
+      b.title = (editMode ? "Click to edit" : `Start this scene${i < 9 ? ` (key ${i + 1})` : ""}`) +
+        (scene.tags?.length ? `\nTags: ${scene.tags.join(", ")}` : "");
 
       const name = document.createElement("span");
       name.className = "scene-name";
@@ -409,6 +411,7 @@ const Scenes = (() => {
 
     $("sc-link").value = scene.link || "";
     fillLinkPicker();
+    $("sc-tags").value = (scene.tags || []).join(", ");
     $("sc-link-auto").checked = !!scene.linkAuto;
     $("sc-notes").value = scene.notes || "";
 
@@ -509,6 +512,7 @@ const Scenes = (() => {
         },
         link: $("sc-link").value.trim(),
         linkAuto: $("sc-link-auto").checked,
+        tags: Vibe.parseWords($("sc-tags").value),
         notes: $("sc-notes").value.trim(),
       },
     };
@@ -597,5 +601,13 @@ const Scenes = (() => {
     setTimeout(render, 1500);
   }
 
-  return { init, activate, silence };
+  // From ✨ Vibe: a new scene from what's playing, with these tags already filled in.
+  function createWithTags(tags) {
+    const scene = captureCurrent();
+    scene.tags = [...tags];
+    if (tags[0]) scene.name = tags[0][0].toUpperCase() + tags[0].slice(1);
+    openEditor(scene, true);
+  }
+
+  return { init, activate, silence, createWithTags, list: () => scenes };
 })();

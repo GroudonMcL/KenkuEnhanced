@@ -305,3 +305,20 @@ select {
 .soundpad-actions { display: flex; gap: 4px; flex-wrap: wrap; margin-top: auto; }
 .soundpad-actions button { flex: 1; min-height: 38px; }
 .dialog label > select + input { margin-top: 4px; }
+
+/* ---------- ✨ Vibe ---------- */
+.vibe-dialog { width: min(820px, calc(100vw - 32px)); }
+.vibe-drop {
+  display: flex; gap: 14px; align-items: center; justify-content: center; text-align: center;
+  min-height: 140px; padding: 12px; border: 2px dashed var(--border); border-radius: var(--radius);
+  background: #0d0f12; color: var(--muted);
+}
+.vibe-drop.over { border-color: var(--accent); background: #1d1a10; }
+.vibe-drop img { display: none; max-height: 200px; max-width: 50%; border-radius: 8px; object-fit: contain; }
+.vibe-drop.has-image img { display: block; }
+.vibe-drop-text button { margin-top: 8px; }
+.dialog .url-row input { min-height: 44px; font: inherit; color: var(--text); background: #0d0f12; border: 1px solid var(--border); border-radius: 8px; padding: 0 10px; }
+.vibe-results h3 { margin: 10px 0 6px; font-size: 1rem; color: var(--muted); }
+.vibe-row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.vibe-row .small { min-height: 40px; }
+.vibe-scene { border-left: 8px solid var(--scene-color, var(--border)); }

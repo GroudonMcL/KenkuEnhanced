@@ -306,5 +306,13 @@ const SoundsPanel = (() => {
     loadFolders();
   }
 
-  return { init };
+  // Used by ✨ Vibe: show the panel and search for `q`.
+  function searchFor(q) {
+    Layout.show("sounds");
+    $("snd-search").value = q;
+    search(q, 1);
+    $("panel-sounds").scrollTop = 0;
+  }
+
+  return { init, search: searchFor };
 })();

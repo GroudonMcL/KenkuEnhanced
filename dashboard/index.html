@@ -29,6 +29,7 @@
   <section id="scenes-bar" class="scenes-bar" aria-label="Scenes">
     <div id="scene-buttons" class="scene-buttons"></div>
     <div class="scene-tools">
+      <button id="vibe-open" class="mid" title="Pick music and sounds from a picture or a few words">✨ Vibe</button>
       <button id="scene-capture" class="mid" title="Make a new scene from what's playing right now">＋ Save current as scene</button>
       <button id="scene-edit-mode" class="mid" title="Click a scene to edit it instead of playing it">✎ Edit scenes</button>
       <button id="scene-silence" class="mid danger" title="Fade everything out (key 0)">🔇 Fade out all</button>
@@ -278,6 +279,35 @@
     </form>
   </dialog>
 
+  <!-- ✨ Vibe (pop-up): picture or words → suggestions. vibe.js runs it. -->
+  <dialog id="vibe-dialog" class="dialog vibe-dialog">
+    <form method="dialog">
+      <h2>✨ Vibe</h2>
+      <p class="hint">Show it a picture (a map, scene art, a photo) or type a few words, and it suggests what to play.
+        Pictures are recognised on this PC – nothing is uploaded.</p>
+      <div id="vibe-drop" class="vibe-drop">
+        <img id="vibe-preview" alt="">
+        <div class="vibe-drop-text">
+          Drop a picture here, or paste one (Ctrl+V)<br>
+          <button type="button" id="vibe-choose" class="mid">🖼 Choose a picture…</button>
+          <input id="vibe-file" type="file" accept="image/*" hidden>
+        </div>
+      </div>
+      <div id="vibe-url-form" class="url-row" role="group">
+        <input id="vibe-url" type="text" placeholder="…or paste a picture's web address" autocomplete="off">
+        <button type="button" id="vibe-url-go" class="mid">Use</button>
+      </div>
+      <div id="vibe-status" class="notice" hidden></div>
+      <label>Words <span class="hint">(from the picture – change them as you like, separated by commas)</span>
+        <input id="vibe-words" type="text" placeholder="tavern, night, cheerful" autocomplete="off" spellcheck="false"></label>
+      <p id="vibe-scores" class="hint" hidden></p>
+      <div id="vibe-results" class="vibe-results"></div>
+      <div class="dialog-buttons">
+        <button type="button" id="vibe-close" class="mid">Close</button>
+      </div>
+    </form>
+  </dialog>
+
   <!-- Link editor (pop-up). links.js fills it in. -->
   <dialog id="link-dialog" class="dialog">
     <form id="link-form" method="dialog">
@@ -314,6 +344,9 @@
         <label class="narrow">Colour <input id="sc-color" type="color"></label>
         <label class="narrow">Fade (seconds) <input id="sc-fade" type="number" min="0" max="20" step="0.5"></label>
       </div>
+
+      <label>Tags <span class="hint">(words that describe it, e.g. tavern, night, cheerful – ✨ Vibe uses them)</span>
+        <input id="sc-tags" type="text" maxlength="200" placeholder="tavern, night, cheerful" spellcheck="false"></label>
 
       <fieldset>
         <legend>🎵 Kenku music</legend>
@@ -373,6 +406,8 @@
   <script src="js/links.js"></script>
   <script src="js/settings.js"></script>
   <script src="js/scenes.js"></script>
+  <script src="js/vibe-words.js"></script>
+  <script src="js/vibe.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

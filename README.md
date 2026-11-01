@@ -11,6 +11,8 @@ A dashboard for [Kenku FM](https://github.com/owlbear-rodeo/kenku-fm) that you o
   ambience under music. Paste a link, or **search YouTube** right in the dashboard.
 - **Website panel**: embed any site that allows it (with a clear message when it doesn't),
   plus **saved link buttons** and a browser for **Tabletop Audio's SoundPads**.
+- **✨ Vibe**: show it a picture (a map, scene art) or type a few words, and it suggests
+  matching scenes, Tabletop Audio SoundPads and sound / YouTube searches.
 - **Sound search**: search Freesound, listen to a preview, and download sounds straight into a
   folder on your PC, with the credits written down for you.
 
@@ -120,6 +122,37 @@ Good to know:
   **Links and Tabletop Audio** below for where it opens.
 - Scenes are saved in the `data` folder (`data/scenes.json`). Copy that folder to back them up.
   The previous version is always kept as `scenes.backup.json`.
+
+## ✨ Vibe: from a picture to sounds
+Click **✨ Vibe** in the scenes bar. Then either:
+- **give it a picture**: drop it on the box, paste it with **Ctrl+V** (e.g. after copying a
+  picture in your browser or a screenshot), click **🖼 Choose a picture…**, or paste a picture's
+  web address (right-click a picture on a website → *Copy image address*);
+- or just **type a few words**, like `tavern, night, cheerful`.
+
+From a picture, it fills in **Words** with what it sees: a place (tavern, forest, cave,
+spaceship…), weather (rain, storm, fog…), night, and a mood (calm, tense, scary, epic…). Change the
+words however you like; the suggestions update as you type:
+- **Your scenes** that match. Click one to start it.
+- **＋ New scene with these tags**: saves what's playing now as a scene with these words as its tags.
+- **Tabletop Audio SoundPads** that fit.
+- **Search for sounds** (Freesound) and **Search YouTube** buttons with ready-made searches.
+
+**Tags make matching work.** In the scene editor (**✎ Edit scenes** → click a scene) there's a
+**Tags** box. Type words that describe the scene, separated by commas, e.g.
+`tavern, cheerful, night`. Similar words count too: a scene tagged `inn` matches a picture of a
+tavern. Words in a scene's name and notes count half.
+
+How it works, and what to expect:
+- Pictures are recognised **on your PC** by a small AI model called CLIP. Nothing is uploaded,
+  there's no account, and it's free.
+- **The first time**, it downloads the model (about 150 MB) and keeps it in `data/models`. That
+  takes a minute or two on a normal connection. After that it works offline and takes a second
+  or two per picture.
+- It knows about 55 words (see `dashboard/js/vibe-words.js`, where you can add your own). It's
+  good at clear pictures of places and weather, and only guesses at mood. Treat the words as a
+  starting point and fix them by hand.
+- The first picture after starting the dashboard is slower, while the model loads.
 
 ## Links and Tabletop Audio
 The **Website** panel keeps your favourite sites as buttons.
@@ -264,6 +297,9 @@ A proper installer with one-click updates is planned (see `docs/PLAN.md`).
 | Sounds says "Freesound rejected the API key" | You probably copied the Client id. Use the longer **Client secret/Api key** from <https://freesound.org/apiv2/apply/> |
 | Sound downloads fail with "Couldn't create …" | The downloads folder in ⚙ Settings doesn't exist or isn't writable. Pick another folder, tick "Create the folder" and Save |
 | "Saved, but couldn't add it to ATTRIBUTION.csv" | The file is open in Excel, which locks it. Close Excel; the sound itself was saved |
+| ✨ Vibe says "Couldn't load the picture recogniser" | You need to be online the first time (it downloads the model). After that it works offline |
+| ✨ Vibe says "The site answered 403" for a picture address | That site doesn't let other programs fetch its pictures. Save the picture and drop the file in instead |
+| ✨ Vibe gives odd words | It's guessing from what it was trained on. Fix the words by hand. Clear pictures of a place work best, and maps work less well |
 | **📂 Open folder** does nothing | The window may have opened behind Kenku. Check the taskbar |
 
 ## Project layout
@@ -276,8 +312,9 @@ helper/       Node.js helper server (Express)
   sounds.js     Freesound search + download, ATTRIBUTION.csv
   links.js      saved links (data/links.json) + Tabletop Audio SoundPad list
   datafile.js   safe reading/writing of the files in data/
+  vibe.js       model files for ✨ Vibe (kept in data/models) + picture fetcher
 dashboard/    the web page (plain HTML/CSS/JS, no build step)
-data/         your scenes and links (created automatically, not uploaded to GitHub)
+data/         your scenes, links and the ✨ Vibe model (created automatically, not uploaded to GitHub)
 docs/         PLAN.md (roadmap), kenku-remote-api.md (verified API reference)
 ```
 

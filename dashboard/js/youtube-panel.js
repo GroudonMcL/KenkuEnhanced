@@ -403,5 +403,14 @@ const YouTubePanel = (() => {
     document.head.appendChild(s);
   }
 
-  return { init, parse, decks: () => decks, ensureDecks };
+  // Used by ✨ Vibe: show the panel and search YouTube for `q`.
+  function searchFor(q) {
+    Layout.show("youtube");
+    $("yt-search").value = q;
+    $("yt-search-type").value = "video";
+    search(q, "video");
+    $("panel-youtube").scrollTop = 0;
+  }
+
+  return { init, parse, decks: () => decks, ensureDecks, searchFor };
 })();
