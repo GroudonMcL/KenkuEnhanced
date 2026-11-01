@@ -344,6 +344,11 @@ app.post("/api/settings/test-youtube", async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
+// 8. Scenes (stored in data/scenes.json – see helper/scenes.js)
+// ---------------------------------------------------------------------------
+app.use("/api/scenes", require("./scenes")(jsonOnly));
+
+// ---------------------------------------------------------------------------
 // Start
 // ---------------------------------------------------------------------------
 // We listen on 127.0.0.1 (this computer only) by default, so nobody else on your

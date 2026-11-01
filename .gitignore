@@ -12,3 +12,6 @@ downloads/
 # OS clutter
 .DS_Store
 Thumbs.db
+
+# Your scenes and other saved data (back this folder up!)
+data/
