@@ -3,6 +3,8 @@
 A dashboard for [Kenku FM](https://github.com/owlbear-rodeo/kenku-fm) that you open
 **inside Kenku's own browser**, so everything it plays goes to Discord. One screen with:
 
+- **Scenes**: one click (or a number key) switches music, soundboard sounds and YouTube
+  together, with smooth fades.
 - **Kenku control**: your playlists and soundboards as big buttons, play/pause/stop/next,
   volume, and what's playing now.
 - **YouTube players**: as many as you like, each with its own volume and loop, so you can layer
@@ -80,6 +82,40 @@ npm run mock-kenku
 starts a **fake** Kenku so you can try the dashboard with Kenku closed.
 Run it in a second window, with the real Kenku closed, because both use port 3333.
 
+## Scenes
+A scene remembers a mood: a Kenku playlist and its volume, soundboard sounds, YouTube videos
+with their volumes, plus an optional link and notes.
+
+**Make one:** get things playing the way you like (a playlist, some sounds, a YouTube video),
+then click **＋ Save current as scene**. Give it a name, adjust anything you want, and click
+**Save scene**.
+
+**Use it:** click the scene button, or press its number key. While a scene fades in, its button
+pulses; once it's active, it turns gold. Anything that changes fades out first, then the new
+scene fades in. If the playlist or video is the same, it keeps playing and only the volume changes.
+
+| Key | Does |
+|---|---|
+| `1` – `9` | Start scene 1 – 9 |
+| `0` | Fade everything out (same as **🔇 Fade out all**) |
+
+Keys only work while the dashboard has focus. After clicking inside a YouTube video or a
+website, click an empty part of the dashboard first.
+
+**Change one:** click **✎ Edit scenes**, then click a scene. You can rename it, change the
+colour, delete it, or move it left or right (that changes its number key). Click
+**✓ Done editing** when finished.
+
+Good to know:
+- **Fade (seconds)** is per scene. Soundboard sounds use their own fade settings from Kenku,
+  because Kenku's remote control can only start and stop them.
+- **"Leave the music as it is"** makes a scene that only changes sounds or YouTube, e.g. a
+  "Thunderstorm" scene layered over whatever music is playing.
+- **Link:** paste your Tabletop Audio SoundPad share link here. While the scene is active, a
+  button opens it, or tick "open when the scene starts".
+- Scenes are saved in the `data` folder (`data/scenes.json`). Copy that folder to back them up.
+  The previous version is always kept as `scenes.backup.json`.
+
 ## Settings
 Click **⚙ Settings** at the top right of the dashboard to change the Kenku address and port,
 your API keys, the downloads folder and network access. Click **Save** and the changes apply
@@ -147,7 +183,9 @@ helper/       Node.js helper server (Express)
   server.js     dashboard files, /kenku proxy, /health, /api/*
   config.js     reads config.json
   check-kenku.js, mock-kenku.js
+  scenes.js     saves scenes to data/scenes.json
 dashboard/    the web page (plain HTML/CSS/JS, no build step)
+data/         your scenes (created automatically, not uploaded to GitHub)
 docs/         PLAN.md (roadmap), kenku-remote-api.md (verified API reference)
 ```
 

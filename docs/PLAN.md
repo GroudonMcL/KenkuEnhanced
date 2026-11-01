@@ -27,14 +27,21 @@ API keys live (they never reach the browser) and where files get written to disk
   layout + URLs saved in localStorage.
 - Windows double-click launcher.
 
-### Phase 2 – Scenes
-- A scene = `{ name, playlistId, sounds: [soundId...], volume, soundpadLink?, tags? }`.
-- Stored by the helper in `data/scenes.json` (not localStorage), so they survive a
-  browser reset and can be backed up.
-- "Fade": Kenku's API only exposes the *playlist* volume, so fade = step the playlist
-  volume down over ~2s, switch playlist, step it up. Soundboard sounds can only be
-  started/stopped (their own fadeIn/fadeOut settings in Kenku apply).
-- Hotkeys (Phase 2b): number keys 1–9 trigger scenes; space = play/pause.
+### Phase 1.5 – polish (built)
+- Multiple YouTube players (rename, minimise, own volume/loop) and in-app YouTube search
+  (`/api/youtube/search`, key in Settings).
+- Settings pane (`/api/settings`): Kenku address, API keys, downloads folder, LAN access.
+
+### Phase 2 – Scenes (built)
+- A scene = `{ name, color, fadeSeconds, music: {mode, playlistId, volume},
+  sounds: {ids, stopOthers}, youtube: {players: [{url, volume, loop}], stopOthers}, link, linkAuto, notes }`.
+- Stored by the helper in `data/scenes.json` (+ `scenes.backup.json`).
+- Switching: fade out what changes → switch → fade in. Same playlist/video keeps playing.
+  Kenku only exposes the *playlist* volume, so soundboard sounds just start/stop
+  (their own fadeIn/fadeOut settings in Kenku apply). YouTube volumes fade fully.
+- "Save current as scene" captures what's playing. Keys 1–9 = scenes, 0 = fade out all.
+- Ideas for later: per-scene hotkeys beyond 1–9, crossfade (overlap) instead of out-then-in,
+  scene groups/tabs per campaign, export/import scenes.
 
 ### Phase 3 – Sound search & download
 - Helper routes `/api/search?source=freesound&q=rain`, `/api/download`.
