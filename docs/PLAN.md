@@ -107,10 +107,37 @@ API keys live (they never reach the browser) and where files get written to disk
 - Ideas for later: "✨ from picture" inside the scene editor, a per-campaign vocabulary, and
   using the YouTube/Freesound results' own tags to learn better words.
 
-### Phase 6 – Packaging & updates
-- Today: `Start KenkuEnhanced.bat` + a "new version available" badge (GitHub releases).
-- Later: a Setup.exe (Node bundled, e.g. Node SEA + Inno Setup, or Electron wrapper)
-  with one-click update from GitHub Releases.
+### Phase 6 – Packaging & updates (built)
+- **Release build:** `.github/workflows/release.yml` runs on a Windows runner when a `v*` tag
+  is pushed (or by hand, build-only). It checks the tag matches `package.json`, runs
+  `npm ci --omit=dev`, bundles `node.exe` (Node 22) into `node/`, smoke-tests the helper from
+  the release folder, then makes:
+  - `KenkuEnhanced-vX.Y.Z-windows.zip` (portable, 7-Zip);
+  - `KenkuEnhanced-Setup-vX.Y.Z.exe` (Inno Setup, `installer/KenkuEnhanced.iss`);
+  - `SHA256SUMS.txt`.
+  It then publishes the GitHub release. See `docs/RELEASING.md`.
+- **Installer:** per-user, no admin (`%LOCALAPPDATA%\Programs\KenkuEnhanced`), so the app can
+  update itself. Start menu / desktop / "start at sign-in" shortcuts. Uninstall leaves the
+  user's `config.json`, `data/` and `downloads/`.
+- **Launcher:** `Start KenkuEnhanced.bat` prefers the bundled `node\node.exe` and skips
+  `npm install` in release builds. It closes its window when the helper exits with code 75
+  (an update is in progress).
+- **One-click update** (`helper/update.js` + `helper/updater.js`):
+  1. `/api/version` → badge → update window with release notes → `/api/update/install`.
+  2. The helper downloads the zip, verifies its SHA-256 and unzips it into `update/staging`
+     (Windows `tar.exe`, falling back to PowerShell).
+  3. It starts the *new* updater with the *new* `node.exe` (so the old one isn't locked),
+     then exits.
+  4. The updater moves old files to `update/backup-*`, copies the new ones in (never
+     `config.json`, `data/`, `downloads/`), rolls back on failure, and restarts the helper.
+  5. The page waits for `/health` to report the new version, then reloads.
+
+  Git checkouts are detected and told to `git pull` instead.
+- Not done: code signing (needs a paid certificate, so SmartScreen warns). Also the version
+  shown in Windows' "Installed apps" only changes when Setup.exe is run, not after a
+  one-click update.
+- Considered and skipped: Node SEA and an Electron wrapper. Bundling plain `node.exe` is
+  simpler, and the app is a server plus a page opened inside Kenku anyway.
 
 ### Maybe – Kenku fork
 - Split browser views; an "import file to playlist" endpoint.

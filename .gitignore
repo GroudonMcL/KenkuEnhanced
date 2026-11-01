@@ -15,3 +15,10 @@ Thumbs.db
 
 # Your scenes and other saved data (back this folder up!)
 data/
+
+# Release builds (made by .github/workflows/release.yml)
+build/
+dist/
+
+# One-click update downloads and backups
+update/

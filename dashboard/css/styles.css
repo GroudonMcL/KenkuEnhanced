@@ -322,3 +322,10 @@ select {
 .vibe-row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 .vibe-row .small { min-height: 40px; }
 .vibe-scene { border-left: 8px solid var(--scene-color, var(--border)); }
+
+/* ---------- Update window ---------- */
+button.update-badge { border: 0; cursor: pointer; }
+.upd-h { margin: 0; font-size: 1rem; color: var(--muted); }
+.upd-notes { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 40vh; overflow: auto;
+  background: #0d0f12; border-radius: 8px; padding: 10px 12px; font-size: .92rem; }
+.upd-link { color: var(--accent); align-self: center; }

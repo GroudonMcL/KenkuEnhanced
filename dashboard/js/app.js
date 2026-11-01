@@ -32,20 +32,6 @@
     status.title = tip;
   }
 
-  // Show a badge if a newer release exists on GitHub.
-  async function checkVersion() {
-    try {
-      const v = await (await fetch("/api/version")).json();
-      if (v.updateAvailable) {
-        const badge = document.getElementById("update-badge");
-        badge.hidden = false;
-        badge.textContent = `Update available: v${v.latest}`;
-        badge.href = v.url;
-        badge.title = `You have v${v.current}. Click to see what's new.`;
-      }
-    } catch { /* offline – ignore */ }
-  }
-
   Layout.init();
   KenkuPanel.init();
   YouTubePanel.init();
@@ -59,5 +45,6 @@
 
   checkHealth();
   setInterval(checkHealth, 5000);
-  checkVersion();
+  Update.init(); // "Update available" badge (checks GitHub Releases)
+  setInterval(Update.check, 6 * 60 * 60 * 1000); // and again every 6 hours
 })();

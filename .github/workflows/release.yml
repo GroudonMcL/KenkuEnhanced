@@ -1,0 +1,128 @@
+# Builds the Windows downloads and publishes a GitHub release.
+#
+#   • Push a tag like v0.2.0 (matching "version" in package.json) → builds and
+#     publishes the release. Every installed dashboard then shows "Update available".
+#   • Run it by hand (Actions tab → Release → Run workflow) → builds only, and puts
+#     the files under the run's "Artifacts" so you can test them first.
+#
+# Produces:
+#   KenkuEnhanced-Setup-vX.Y.Z.exe   installer (Node.js included, no admin needed)
+#   KenkuEnhanced-vX.Y.Z-windows.zip portable copy; also what one-click updates download
+#   SHA256SUMS.txt                   fingerprints, checked by the updater
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Work out the version
+        id: ver
+        shell: pwsh
+        run: |
+          $v = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          if ($env:GITHUB_REF_TYPE -eq "tag" -and $env:GITHUB_REF_NAME -ne "v$v") {
+            throw "Tag $env:GITHUB_REF_NAME doesn't match the version in package.json ($v). Change package.json first, then tag."
+          }
+          "version=$v" >> $env:GITHUB_OUTPUT
+
+      - name: Install libraries (without development tools)
+        run: npm ci --omit=dev --no-audit --no-fund
+
+      - name: Assemble the release folder
+        shell: pwsh
+        run: |
+          $out = "build/KenkuEnhanced"
+          New-Item -ItemType Directory -Force $out, "$out/node", dist | Out-Null
+          $items = "dashboard", "helper", "docs", "node_modules", "package.json", "package-lock.json",
+                   "config.example.json", "README.md", "LICENSE", "Start KenkuEnhanced.bat"
+          foreach ($p in $items) { Copy-Item $p -Destination $out -Recurse }
+          # Bundle Node.js itself, so nobody has to install it
+          $node = (Get-Command node).Source
+          Copy-Item $node "$out/node/node.exe"
+          $nodeLicence = Join-Path (Split-Path $node) "LICENSE"
+          if (Test-Path $nodeLicence) { Copy-Item $nodeLicence "$out/node/LICENSE" }
+          & "$out/node/node.exe" --version
+
+      - name: Smoke test (start the helper from the release folder)
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath "build/KenkuEnhanced/node/node.exe" -ArgumentList "helper/server.js" `
+               -WorkingDirectory "build/KenkuEnhanced" -PassThru -NoNewWindow
+          try {
+            $ok = $false
+            for ($i = 0; $i -lt 30 -and -not $ok; $i++) {
+              Start-Sleep -Seconds 1
+              try {
+                $h = Invoke-RestMethod http://127.0.0.1:4000/health
+                $ok = $h.version -eq "${{ steps.ver.outputs.version }}"
+              } catch { }
+            }
+            if (-not $ok) { throw "The helper didn't start from the release folder." }
+            Invoke-WebRequest http://127.0.0.1:4000/ -UseBasicParsing | Out-Null
+            "Helper started and answered /health with the right version."
+          } finally {
+            Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+          }
+          # The smoke test must not leave files behind in the package
+          Remove-Item -Recurse -Force build/KenkuEnhanced/data, build/KenkuEnhanced/update, build/KenkuEnhanced/config.json -ErrorAction SilentlyContinue
+
+      - name: Make the portable zip
+        shell: pwsh
+        run: |
+          # 7-Zip writes standard zip paths (forward slashes) that every unzipper reads.
+          7z a -tzip -mx=7 "dist/KenkuEnhanced-v${{ steps.ver.outputs.version }}-windows.zip" ./build/KenkuEnhanced
+          if ($LASTEXITCODE) { throw "7z failed" }
+
+      - name: Build the installer
+        shell: pwsh
+        run: |
+          $iscc = Join-Path ${env:ProgramFiles(x86)} "Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress }
+          & $iscc "/DAppVersion=${{ steps.ver.outputs.version }}" "/DSourceDir=$PWD\build\KenkuEnhanced" installer\KenkuEnhanced.iss
+          if ($LASTEXITCODE) { throw "Inno Setup failed" }
+
+      - name: Fingerprints
+        shell: pwsh
+        run: |
+          Get-ChildItem dist -File | Where-Object Name -ne "SHA256SUMS.txt" | ForEach-Object {
+            "{0}  {1}" -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower(), $_.Name
+          } | Set-Content -Encoding ascii dist/SHA256SUMS.txt
+          Get-Content dist/SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: KenkuEnhanced-${{ steps.ver.outputs.version }}
+          path: dist/
+
+      - name: Publish the release
+        if: github.ref_type == 'tag'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = $env:GITHUB_REF_NAME
+          $notes = @"
+          **New here?** Download **KenkuEnhanced-Setup-$tag.exe** below and run it (Windows may say "Windows protected your PC": click *More info → Run anyway*). Already installed? Click **Update available** in the dashboard.
+
+          "@
+          gh release view $tag *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $tag (Get-ChildItem dist -File).FullName --clobber
+          } else {
+            gh release create $tag (Get-ChildItem dist -File).FullName --title "KenkuEnhanced $tag" --notes $notes --generate-notes
+          }
+          if ($LASTEXITCODE) { throw "Publishing the release failed" }

@@ -29,23 +29,35 @@ Kenku FM ── built-in browser ──► http://localhost:4000 (this dashboard
 
 ## Setup on Windows (first time, about 5 minutes)
 
-### 1. Install Node.js (once)
-Node.js runs the small "helper" program that sits between the dashboard and Kenku.
-1. Go to <https://nodejs.org> and download the **LTS** version.
-2. Run the installer and keep all the default options.
+### 1. Install KenkuEnhanced
+1. Open the [Releases page](https://github.com/GroudonMcL/KenkuEnhanced/releases) and, under the
+   newest version, download **`KenkuEnhanced-Setup-vX.Y.Z.exe`**.
+2. Run it. Windows may say **"Windows protected your PC"**, because the installer isn't signed (that
+   costs money every year). Click **More info → Run anyway**.
+3. Click through the installer. It doesn't need administrator rights and includes everything
+   (Node.js too). You can tick **Start the helper automatically when I sign in to Windows**.
 
-### 2. Get this project
-- On the GitHub page click **Code → Download ZIP**, then unzip it somewhere easy,
-  e.g. `Documents\KenkuEnhanced`.
-  *(If you use Git: `git clone https://github.com/GroudonMcL/KenkuEnhanced.git`)*
+It installs into `%LOCALAPPDATA%\Programs\KenkuEnhanced` and adds **KenkuEnhanced** to the Start
+menu (and the desktop, if you leave that ticked).
 
-### 3. Turn on Kenku Remote
+<details>
+<summary>Other ways: portable ZIP, or the source code</summary>
+
+- **Portable, no installer:** download **`KenkuEnhanced-vX.Y.Z-windows.zip`** from the same page,
+  unzip it somewhere easy (e.g. `Documents\KenkuEnhanced`), and use **`Start KenkuEnhanced.bat`**
+  inside it. It also includes Node.js and can update itself.
+- **Source code** (GitHub's green **Code → Download ZIP**, or `git clone`): you need
+  [Node.js](https://nodejs.org) (the **LTS** version) installed first. `Start KenkuEnhanced.bat`
+  installs the libraries on the first run. These copies can't update themselves (see **Updating**).
+</details>
+
+### 2. Turn on Kenku Remote
 In Kenku FM open **Settings** (the cog) → **Remote** → switch it **on**.
 Keep the default address `127.0.0.1` and port `3333`.
 
-### 4. Start the helper
-Double-click **`Start KenkuEnhanced.bat`**. A black window opens. The first time, it
-installs what it needs (about 30 seconds), then shows:
+### 3. Start the helper
+Start **KenkuEnhanced** from the Start menu or desktop (or double-click **`Start KenkuEnhanced.bat`**
+in its folder). A black window opens and shows:
 
 ```
   KenkuEnhanced helper is running.
@@ -54,10 +66,9 @@ installs what it needs (about 30 seconds), then shows:
 
 **Leave that window open** while you play. Close it to stop the helper.
 
-> Windows may show "Windows protected your PC" the first time. Click **More info → Run anyway**.
-> That happens because the file isn't signed; you can open it in Notepad to see exactly what it does.
+> The window **is** the helper. If you close it, the dashboard stops working until you start it again.
 
-### 5. Open the dashboard in Kenku
+### 4. Open the dashboard in Kenku
 In Kenku FM, click **+** to open a new browser tab, type `http://localhost:4000` and press Enter.
 The pill at the top should turn green: **Kenku connected**.
 
@@ -272,19 +283,30 @@ Good to know:
   save the file into your downloads folder yourself.
 
 ## Updating
-When a new version is released, an **"Update available"** badge appears at the top of the
-dashboard. To update for now:
-1. Close the helper window.
-2. Download the new ZIP and unzip it over the old folder (your `config.json` is kept,
-   because the ZIP doesn't contain one).
-3. Double-click `Start KenkuEnhanced.bat` again. It installs any new libraries by itself.
+When a new version is out, an **"Update available"** badge appears at the top of the dashboard.
+Click it to see what's new, then click **Update now**. The helper downloads the new version,
+checks it isn't damaged, swaps the files and restarts itself, and the dashboard reloads. It takes
+about a minute. Kenku keeps playing in the meantime.
 
-A proper installer with one-click updates is planned (see `docs/PLAN.md`).
+**What's kept:** `config.json` (your settings and keys), the `data` folder (scenes, links, the
+✨ Vibe model) and `downloads` (your sounds). The previous version is kept in `update\backup-…`
+until the next update, and every step is written to `update\update.log`.
+
+If something goes wrong, the old version is put back automatically. You can always update by
+hand instead: run the newest **Setup.exe** over the top (it keeps your files too), or unzip the
+new portable ZIP over your old folder.
+
+Copies made with **Git** or GitHub's **Download ZIP** can't update themselves. The badge still
+tells you about new versions. Update with `git pull` and then `npm install`, or switch to the
+installer.
 
 ## Troubleshooting
 | Problem | Fix |
 |---|---|
 | Pill says **Kenku not reachable** | Kenku isn't open, or Remote is off, or the port differs from `config.json`. Run `npm run check-kenku` |
+| **Update now** says the download is damaged | Your connection dropped. Click **Update now** again. Nothing was changed |
+| The update didn't come back ("didn't come back within 3 minutes") | Start KenkuEnhanced again from the Start menu. If the new version doesn't start, `update\update.log` says why; the old version is in `update\backup-…` |
+| Windows says "Windows protected your PC" | The installer isn't signed. Click **More info → Run anyway** |
 | Pill says **Helper offline** | The black helper window was closed. Start it again |
 | `Port 4000 is already in use` | The helper is already running in another window, or change `port` in `config.json` |
 | A website shows "can't be shown inside the dashboard" | That site forbids embedding. Use **↗ New tab**, which opens it as a Kenku tab so its audio still reaches Discord. Saved links set to Automatic will open it in a tab from now on |
@@ -312,10 +334,13 @@ helper/       Node.js helper server (Express)
   sounds.js     Freesound search + download, ATTRIBUTION.csv
   links.js      saved links (data/links.json) + Tabletop Audio SoundPad list
   datafile.js   safe reading/writing of the files in data/
+  update.js     update check + one-click update; updater.js swaps the files
   vibe.js       model files for ✨ Vibe (kept in data/models) + picture fetcher
 dashboard/    the web page (plain HTML/CSS/JS, no build step)
 data/         your scenes, links and the ✨ Vibe model (created automatically, not uploaded to GitHub)
-docs/         PLAN.md (roadmap), kenku-remote-api.md (verified API reference)
+installer/    Inno Setup script for the Windows installer
+.github/      release.yml builds the installer + portable ZIP when a version is tagged
+docs/         PLAN.md (roadmap), kenku-remote-api.md (verified API reference), RELEASING.md
 ```
 
 ## Licence

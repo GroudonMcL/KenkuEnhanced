@@ -7,6 +7,7 @@
 //                  and adds CORS headers to the answer
 //   /health      → reports whether the helper and Kenku Remote are reachable
 //   /api/version → this app's version + latest version on GitHub (update check)
+//   /api/update/* → one-click update from GitHub Releases (helper/update.js)
 //   /api/frame-check?url=... → does a website allow itself to be shown in an iframe?
 //   /api/youtube/search?q=...&type=video → YouTube search (needs apiKeys.youtube)
 //   /api/settings → read / save settings (the dashboard's Settings pane)
@@ -21,9 +22,6 @@ const config = require("./config");
 const pkg = require("../package.json");
 
 const app = express();
-
-// GitHub repo used for the "new version available" check
-const GITHUB_REPO = "GroudonMcL/KenkuEnhanced";
 
 // ---------------------------------------------------------------------------
 // 1. Static dashboard files
@@ -107,45 +105,7 @@ app.get("/health", async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
-// 4. Update check (asks GitHub for the latest release, cached for an hour)
-// ---------------------------------------------------------------------------
-let versionCache = { at: 0, latest: null };
-
-app.get("/api/version", async (req, res) => {
-  const out = { current: pkg.version, latest: null, updateAvailable: false, url: null };
-  try {
-    if (Date.now() - versionCache.at > 60 * 60 * 1000) {
-      const r = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`, {
-        headers: { Accept: "application/vnd.github+json", "User-Agent": "KenkuEnhanced" },
-        signal: AbortSignal.timeout(5000),
-      });
-      // 404 just means "no releases published yet"
-      versionCache = { at: Date.now(), latest: r.ok ? await r.json() : null };
-    }
-    const rel = versionCache.latest;
-    if (rel?.tag_name) {
-      out.latest = rel.tag_name.replace(/^v/, "");
-      out.url = rel.html_url;
-      out.updateAvailable = isNewer(out.latest, out.current);
-    }
-  } catch {
-    // Offline or GitHub unreachable: fail quietly.
-  }
-  res.json(out);
-});
-
-// "0.2.0" newer than "0.1.5"?
-function isNewer(a, b) {
-  const pa = a.split(".").map(Number);
-  const pb = b.split(".").map(Number);
-  for (let i = 0; i < 3; i++) {
-    if ((pa[i] || 0) !== (pb[i] || 0)) return (pa[i] || 0) > (pb[i] || 0);
-  }
-  return false;
-}
-
-// ---------------------------------------------------------------------------
-// 5. Frame check: can this site be shown inside an iframe?
+// 4. Frame check: can this site be shown inside an iframe?
 // ---------------------------------------------------------------------------
 // A browser silently shows a blank/error box when a site forbids framing, and the
 // page can't find out why. So we fetch the site here and read its headers:
@@ -193,7 +153,7 @@ app.get("/api/frame-check", async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
-// 6. YouTube search (YouTube Data API v3)
+// 5. YouTube search (YouTube Data API v3)
 // ---------------------------------------------------------------------------
 // The API key stays here in the helper – the browser never sees it.
 // Each search costs 100 of your 10,000 free daily "quota units" (≈100 searches/day),
@@ -245,7 +205,7 @@ app.get("/api/youtube/search", async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
-// 7. Settings (used by the dashboard's ⚙ Settings pane)
+// 6. Settings (used by the dashboard's ⚙ Settings pane)
 // ---------------------------------------------------------------------------
 // Only accept real JSON requests. A browser only lets *our own page* send JSON
 // here (other websites would need CORS permission, which we don't give for /api),
@@ -348,27 +308,32 @@ app.post("/api/settings/test-youtube", async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
-// 8. Scenes (stored in data/scenes.json – see helper/scenes.js)
+// 7. Scenes (stored in data/scenes.json – see helper/scenes.js)
 // ---------------------------------------------------------------------------
 app.use("/api/scenes", require("./scenes")(jsonOnly));
 
 // ---------------------------------------------------------------------------
-// 9. Sound search + download (Freesound – see helper/sounds.js)
+// 8. Sound search + download (Freesound – see helper/sounds.js)
 // ---------------------------------------------------------------------------
 const soundsRouter = require("./sounds")(jsonOnly);
 app.use("/api/sounds", soundsRouter);
 
 // ---------------------------------------------------------------------------
-// 10. Saved links + Tabletop Audio SoundPad list (see helper/links.js)
+// 9. Saved links + Tabletop Audio SoundPad list (see helper/links.js)
 // ---------------------------------------------------------------------------
 app.use("/api/links", require("./links")(jsonOnly));
 
 // ---------------------------------------------------------------------------
-// 11. Image → vibe: model files (cached in data/models) + picture fetcher
+// 10. Image → vibe: model files (cached in data/models) + picture fetcher
 // ---------------------------------------------------------------------------
 const vibe = require("./vibe")();
 app.use("/models", vibe.models);
 app.use("/api/vibe", vibe.api);
+
+// ---------------------------------------------------------------------------
+// 11. Update check + one-click update: /api/version, /api/update/* (helper/update.js)
+// ---------------------------------------------------------------------------
+app.use("/api", require("./update")(jsonOnly));
 
 // ---------------------------------------------------------------------------
 // Start

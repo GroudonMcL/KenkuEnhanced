@@ -11,7 +11,7 @@
   <header class="topbar">
     <h1>Kenku Dashboard</h1>
     <span id="kenku-status" class="status status-unknown" title="Kenku Remote connection">Kenku: checking…</span>
-    <a id="update-badge" class="update-badge" hidden target="_blank" rel="noopener">Update available</a>
+    <button id="update-badge" class="update-badge" hidden>Update available</button>
     <span class="spacer"></span>
     <div class="toggles" aria-label="Show or hide panels">
       <button class="toggle" data-toggle="scenes">Scenes</button>
@@ -279,6 +279,24 @@
     </form>
   </dialog>
 
+  <!-- Update window (pop-up). update.js runs it. -->
+  <dialog id="update-dialog" class="dialog">
+    <form method="dialog">
+      <h2 id="upd-title">Update available</h2>
+      <p id="upd-intro" class="hint"></p>
+      <h3 class="upd-h">What's new</h3>
+      <div id="upd-notes" class="upd-notes"></div>
+      <div id="upd-message" class="notice" hidden></div>
+      <div id="upd-progress" class="progress" hidden><div id="upd-progress-fill" class="progress-fill"></div></div>
+      <div class="dialog-buttons">
+        <a id="upd-github" class="upd-link" target="_blank" rel="noopener">See it on GitHub ↗</a>
+        <span class="spacer"></span>
+        <button type="button" id="upd-later" class="mid">Later</button>
+        <button type="button" id="upd-install" class="mid primary">Update now</button>
+      </div>
+    </form>
+  </dialog>
+
   <!-- ✨ Vibe (pop-up): picture or words → suggestions. vibe.js runs it. -->
   <dialog id="vibe-dialog" class="dialog vibe-dialog">
     <form method="dialog">
@@ -408,6 +426,7 @@
   <script src="js/scenes.js"></script>
   <script src="js/vibe-words.js"></script>
   <script src="js/vibe.js"></script>
+  <script src="js/update.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
