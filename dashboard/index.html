@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kenku Dashboard</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <!-- Top bar: status lights and panel toggles -->
+  <header class="topbar">
+    <h1>Kenku Dashboard</h1>
+    <span id="kenku-status" class="status status-unknown" title="Kenku Remote connection">Kenku: checking…</span>
+    <a id="update-badge" class="update-badge" hidden target="_blank" rel="noopener">Update available</a>
+    <span class="spacer"></span>
+    <div class="toggles" aria-label="Show or hide panels">
+      <button class="toggle" data-toggle="kenku">Kenku</button>
+      <button class="toggle" data-toggle="youtube">YouTube</button>
+      <button class="toggle" data-toggle="embed">Website</button>
+      <button id="reset-layout" class="toggle" title="Reset panel sizes">Reset layout</button>
+    </div>
+  </header>
+
+  <!-- The three panels. layout.js puts drag handles between the visible ones. -->
+  <main id="panels">
+
+    <!-- Panel A: Kenku control -->
+    <section class="panel" id="panel-kenku" data-panel="kenku">
+      <h2>Kenku</h2>
+      <div id="kenku-error" class="notice notice-error" hidden></div>
+
+      <div class="now-playing">
+        <div class="np-label">Now playing</div>
+        <div id="np-track" class="np-track">—</div>
+        <div id="np-playlist" class="np-playlist"></div>
+        <div id="np-progress" class="progress" title="Click to jump">
+          <div id="np-progress-fill" class="progress-fill"></div>
+        </div>
+        <div id="np-time" class="np-time">0:00 / 0:00</div>
+      </div>
+
+      <div class="transport">
+        <button id="btn-prev" class="big" title="Previous track">⏮</button>
+        <button id="btn-playpause" class="big primary" title="Play / pause">▶</button>
+        <button id="btn-stop" class="big" title="Stop (pause and rewind)">⏹</button>
+        <button id="btn-next" class="big" title="Next track">⏭</button>
+      </div>
+
+      <div class="volume-row">
+        <button id="btn-mute" class="mid" title="Mute">🔊</button>
+        <input id="volume" type="range" min="0" max="100" step="1" value="80" aria-label="Playlist volume">
+        <span id="volume-value" class="volume-value">80%</span>
+      </div>
+      <div class="mode-row">
+        <button id="btn-shuffle" class="mid" title="Shuffle">🔀 Shuffle</button>
+        <button id="btn-repeat" class="mid" title="Repeat mode">🔁 Repeat: off</button>
+        <button id="btn-refresh" class="mid" title="Reload playlists and soundboards from Kenku">⟳ Refresh</button>
+      </div>
+
+      <h3>Playlists</h3>
+      <div id="playlist-grid" class="grid"></div>
+
+      <h3>Soundboards
+        <button id="btn-stop-sounds" class="small danger" title="Stop every playing sound">Stop all sounds</button>
+      </h3>
+      <div id="soundboard-tabs" class="tabs"></div>
+      <div id="sound-grid" class="grid"></div>
+    </section>
+
+    <!-- Panel B: YouTube -->
+    <section class="panel" id="panel-youtube" data-panel="youtube">
+      <h2>YouTube</h2>
+      <form id="yt-form" class="url-row">
+        <input id="yt-url" type="text" placeholder="YouTube video/playlist URL or ID" autocomplete="off">
+        <button type="submit" class="mid primary">Load</button>
+      </form>
+      <div id="yt-message" class="notice" hidden></div>
+      <div class="yt-frame"><div id="yt-player"></div></div>
+      <div class="volume-row">
+        <span class="label">YT volume</span>
+        <input id="yt-volume" type="range" min="0" max="100" step="1" value="60" aria-label="YouTube volume">
+        <span id="yt-volume-value" class="volume-value">60%</span>
+      </div>
+    </section>
+
+    <!-- Panel C: embed any website -->
+    <section class="panel" id="panel-embed" data-panel="embed">
+      <h2>Website</h2>
+      <form id="embed-form" class="url-row">
+        <input id="embed-url" type="text" placeholder="https://…" autocomplete="off">
+        <button type="submit" class="mid primary">Load</button>
+        <button type="button" id="embed-newtab" class="mid" title="Open in a new Kenku tab">↗ New tab</button>
+      </form>
+      <div class="presets">
+        <button type="button" class="small" data-url="https://tabletopaudio.com/soundpad">Tabletop Audio SoundPad</button>
+        <button type="button" class="small" data-url="https://tabletopaudio.com/">Tabletop Audio</button>
+        <button type="button" class="small" data-url="https://example.com/">example.com (test)</button>
+      </div>
+      <div id="embed-message" class="notice" hidden></div>
+      <div class="embed-frame">
+        <iframe id="embed-iframe" title="Embedded website"
+                allow="autoplay; encrypted-media; fullscreen"
+                referrerpolicy="strict-origin-when-cross-origin"></iframe>
+      </div>
+    </section>
+  </main>
+
+  <!-- Plain scripts, loaded in order. No build step needed. -->
+  <script src="js/storage.js"></script>
+  <script src="js/layout.js"></script>
+  <script src="js/kenku-panel.js"></script>
+  <script src="js/youtube-panel.js"></script>
+  <script src="js/embed-panel.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
