@@ -18,6 +18,7 @@
       <button class="toggle" data-toggle="kenku">Kenku</button>
       <button class="toggle" data-toggle="youtube">YouTube</button>
       <button class="toggle" data-toggle="embed">Website</button>
+      <button class="toggle" data-toggle="sounds">Sounds</button>
       <button id="reset-layout" class="toggle" title="Reset panel sizes">Reset layout</button>
       <button id="open-settings" class="toggle" title="Settings">⚙ Settings</button>
     </div>
@@ -38,7 +39,7 @@
     </div>
   </section>
 
-  <!-- The three panels. layout.js puts drag handles between the visible ones. -->
+  <!-- The panels. layout.js puts drag handles between the visible ones. -->
   <main id="panels">
 
     <!-- Panel A: Kenku control -->
@@ -147,6 +148,57 @@
                 referrerpolicy="strict-origin-when-cross-origin"></iframe>
       </div>
     </section>
+
+    <!-- Panel D: find and download sounds (Freesound) -->
+    <section class="panel" id="panel-sounds" data-panel="sounds">
+      <h2>Sound search</h2>
+      <form id="snd-search-form" class="url-row">
+        <input id="snd-search" type="search" placeholder="Search Freesound (e.g. tavern crowd)" autocomplete="off">
+        <button type="submit" class="mid primary">Search</button>
+      </form>
+      <div class="field-row snd-filters">
+        <label>Length
+          <select id="snd-length">
+            <option value="any">Any length</option>
+            <option value="short">Short effect (under 10 s)</option>
+            <option value="medium">10 s – 2 min</option>
+            <option value="long">Long ambience (over 2 min)</option>
+          </select></label>
+        <label>Sort
+          <select id="snd-sort">
+            <option value="score">Best match</option>
+            <option value="downloads_desc">Most downloaded</option>
+            <option value="rating_desc">Highest rated</option>
+            <option value="duration_asc">Shortest first</option>
+            <option value="created_desc">Newest</option>
+          </select></label>
+      </div>
+      <!-- Preview player (one at a time). In Kenku's browser it reaches Discord too. -->
+      <div class="volume-row snd-preview-row">
+        <span class="label" title="Previews play through this page, so in Kenku your players hear them too">Preview volume</span>
+        <input id="snd-preview-volume" type="range" min="0" max="100" step="1" value="60" aria-label="Preview volume">
+        <span id="snd-preview-volume-value" class="volume-value">60%</span>
+      </div>
+
+      <div class="snd-save">
+        <label>Save into subfolder (optional)
+          <input id="snd-subfolder" type="text" list="snd-subfolders" maxlength="60"
+                 placeholder="e.g. Ambience" autocomplete="off" spellcheck="false"></label>
+        <datalist id="snd-subfolders"></datalist>
+        <button id="snd-open-folder" type="button" class="mid" title="Open this folder on your PC">📂 Open folder</button>
+      </div>
+      <p id="snd-folder-hint" class="hint"></p>
+      <div id="snd-message" class="notice" hidden></div>
+      <div id="snd-results" class="snd-results"></div>
+      <button id="snd-more" type="button" class="mid" hidden>More results</button>
+
+      <p class="hint">Kenku can't add files by itself: drag downloaded files from the folder into a
+        Kenku playlist or soundboard. Credits are kept in <b>ATTRIBUTION.csv</b> in the downloads folder.</p>
+      <p class="hint">More sounds (open in a new tab, download there by hand):
+        <button type="button" class="small" data-snd-site="bbc" title="Free for personal, educational and research use only">BBC Sound Effects ↗</button>
+        <button type="button" class="small" data-snd-site="pixabay">Pixabay ↗</button>
+      </p>
+    </section>
   </main>
 
   <!-- Settings pane (a pop-up dialog). settings.js fills it in and saves it. -->
@@ -171,26 +223,21 @@
           <label>YouTube <span class="hint">(for search – see README)</span>
             <input type="password" autocomplete="off" spellcheck="false"></label>
           <button type="button" class="small key-show" title="Show what you typed">👁</button>
-          <button type="button" class="small key-test">Test</button>
+          <button type="button" class="small key-test" data-test-url="/api/settings/test-youtube">Test</button>
           <button type="button" class="small danger key-remove">Remove</button>
         </div>
         <div class="key-row" data-key="freesound">
-          <label>Freesound <span class="hint">(later: sound search)</span>
+          <label>Freesound <span class="hint">(for sound search – see README)</span>
             <input type="password" autocomplete="off" spellcheck="false"></label>
           <button type="button" class="small key-show" title="Show what you typed">👁</button>
-          <button type="button" class="small danger key-remove">Remove</button>
-        </div>
-        <div class="key-row" data-key="pixabay">
-          <label>Pixabay <span class="hint">(later: sound search)</span>
-            <input type="password" autocomplete="off" spellcheck="false"></label>
-          <button type="button" class="small key-show" title="Show what you typed">👁</button>
+          <button type="button" class="small key-test" data-test-url="/api/sounds/test-key">Test</button>
           <button type="button" class="small danger key-remove">Remove</button>
         </div>
       </fieldset>
 
       <fieldset>
         <legend>Downloads folder</legend>
-        <p class="hint">Where downloaded sounds will go (later phase). Point a Kenku playlist at this folder.</p>
+        <p class="hint">Where sounds from the Sound search panel are saved, together with ATTRIBUTION.csv.</p>
         <input id="set-downloads" type="text" spellcheck="false">
         <label class="check"><input id="set-create-folder" type="checkbox" checked> Create the folder if it doesn't exist</label>
         <div id="set-downloads-status" class="hint"></div>
@@ -277,6 +324,7 @@
   <script src="js/kenku-panel.js"></script>
   <script src="js/youtube-panel.js"></script>
   <script src="js/embed-panel.js"></script>
+  <script src="js/sounds-panel.js"></script>
   <script src="js/settings.js"></script>
   <script src="js/scenes.js"></script>
   <script src="js/app.js"></script>

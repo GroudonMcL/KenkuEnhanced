@@ -50,6 +50,7 @@
   KenkuPanel.init();
   YouTubePanel.init();
   EmbedPanel.init();
+  SoundsPanel.init();
   Settings.init();
   Scenes.init();
   window.addEventListener("settings-saved", checkHealth); // Kenku address may have changed

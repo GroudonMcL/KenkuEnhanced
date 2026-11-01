@@ -12,7 +12,7 @@
                      ├── /kenku/*  → proxies to Kenku Remote, adds CORS
                      ├── /health   → is Kenku reachable?
                      └── /api/*    → our own features (version check, frame check,
-                                     later: sound search, downloads, scenes, tagging)
+                                     scenes, sound search + downloads; later: tagging)
 ```
 
 Everything the dashboard does goes through the helper, so the helper is where
@@ -43,15 +43,25 @@ API keys live (they never reach the browser) and where files get written to disk
 - Ideas for later: per-scene hotkeys beyond 1–9, crossfade (overlap) instead of out-then-in,
   scene groups/tabs per campaign, export/import scenes.
 
-### Phase 3 – Sound search & download
-- Helper routes `/api/search?source=freesound&q=rain`, `/api/download`.
-- Sources: Freesound (API key, CC licences), Pixabay (API key), BBC Sound Effects
-  (check licence terms – RemArc licence is personal/educational only).
-- Preview in the browser, then download to `downloadsFolder` with tidy names
-  like `rain-heavy_freesound-12345.mp3`, and append to `downloadsFolder/ATTRIBUTION.csv`
-  (file, source, author, licence, URL, date).
-- Kenku can't import tracks via API, so you add the downloaded files into a Kenku
-  playlist manually (or point a playlist at the folder) – until a possible Kenku fork.
+### Phase 3 – Sound search & download (built)
+- Helper routes in `helper/sounds.js`: `/api/sounds/search` (q, length, sort, page),
+  `/api/sounds/download` ({id, subfolder}), `/api/sounds/folders`, `/api/sounds/open-folder`,
+  `/api/sounds/test-key`.
+- Source: **Freesound** (API key, CC licences). With a plain key only the HQ MP3 previews
+  (~128 kbps) can be downloaded; originals need OAuth2 (possible later).
+  The helper re-fetches the sound's details by id before downloading, so attribution is
+  right and it only ever downloads from Freesound.
+- Files go to `downloadsFolder[/subfolder]` as `rain-heavy_freesound-12345.mp3`, and a row is
+  appended to `downloadsFolder/ATTRIBUTION.csv` (file, title, author, source, licence,
+  licence_url, source_url, downloaded). Already-downloaded sounds are detected by the
+  `_freesound-<id>` suffix.
+- **Pixabay**: its API only covers images and videos, so no integration – just a link to
+  its sound-effects search. **BBC Sound Effects**: no public API and the RemArc licence is
+  personal/educational/research only – also just a link.
+- Kenku can't import tracks via API, so you drag the downloaded files into a Kenku
+  playlist/soundboard (📂 Open folder helps) – until a possible Kenku fork.
+- Ideas for later: Freesound OAuth for original files, "similar sounds", licence filter,
+  a downloads browser that adds sounds to scenes once Kenku can import.
 
 ### Phase 4 – Tabletop Audio links
 - Save custom SoundPad share links per scene; open them in the embed panel.

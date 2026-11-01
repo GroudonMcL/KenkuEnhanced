@@ -251,3 +251,30 @@ select {
 .sc-yt-row input[type=range] { width: 120px; accent-color: var(--accent); }
 .dialog .spacer { flex: 1; }
 .dialog textarea { resize: vertical; }
+
+/* ---------- Sound search (Freesound) ---------- */
+.snd-filters label { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 140px; color: var(--muted); font-size: .88rem; }
+.snd-results { display: flex; flex-direction: column; gap: 8px; }
+.snd-results:empty { display: none; }
+.snd-result { background: var(--panel-2); border-radius: var(--radius); padding: 8px; display: flex; flex-direction: column; gap: 4px; border: 1px solid transparent; }
+.snd-result.playing { border-color: var(--accent); }
+/* Freesound's waveform picture; click to play from that point */
+.snd-wave { position: relative; height: 56px; border-radius: 6px; background: #0d0f12 center / 100% 100% no-repeat; cursor: pointer; overflow: hidden; }
+.snd-wave-fill { position: absolute; inset: 0 auto 0 0; width: 0; background: rgba(224, 165, 38, .35); border-right: 2px solid var(--accent); pointer-events: none; }
+.snd-result:not(.playing) .snd-wave-fill { border-right: 0; }
+.snd-title { font-weight: 700; overflow-wrap: anywhere; }
+.snd-meta { color: var(--muted); font-size: .9rem; }
+.snd-licence { display: inline-block; padding: 0 6px; border-radius: 4px; background: #3a3017; color: var(--warn); font-weight: 600; cursor: help; }
+.snd-licence.free { background: #173a26; color: var(--ok); }
+.snd-tags { color: var(--muted); font-size: .8rem; }
+.snd-tags:empty { display: none; }
+.snd-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.snd-actions .snd-play, .snd-actions .snd-dl { flex: 1; min-width: 110px; }
+.snd-save { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
+.snd-save label { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 160px; color: var(--muted); font-size: .88rem; }
+.snd-save input {
+  font: inherit; color: var(--text); background: #0d0f12; border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 0 12px; min-height: 52px;
+}
+.panel .hint { color: var(--muted); font-size: .88rem; margin: 0; }
+.panel .hint button { margin: 2px 0; }

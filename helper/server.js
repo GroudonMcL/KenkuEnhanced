@@ -11,6 +11,7 @@
 //   /api/youtube/search?q=...&type=video → YouTube search (needs apiKeys.youtube)
 //   /api/settings → read / save settings (the dashboard's Settings pane)
 //   /api/scenes   → read / save your scenes (stored in data/scenes.json)
+//   /api/sounds/* → Freesound search + download to your downloads folder (helper/sounds.js)
 
 const path = require("path");
 const express = require("express");
@@ -325,6 +326,7 @@ app.put("/api/settings", jsonOnly, (req, res) => {
     return res.status(500).json({ error: `Couldn't save config.json: ${err.message}` });
   }
   if (changes.apiKeys?.youtube !== undefined) searchCache.clear();
+  if (changes.apiKeys?.freesound !== undefined) soundsRouter.clearCache();
   res.json(settingsForBrowser());
 });
 
@@ -347,6 +349,12 @@ app.post("/api/settings/test-youtube", async (req, res) => {
 // 8. Scenes (stored in data/scenes.json – see helper/scenes.js)
 // ---------------------------------------------------------------------------
 app.use("/api/scenes", require("./scenes")(jsonOnly));
+
+// ---------------------------------------------------------------------------
+// 9. Sound search + download (Freesound – see helper/sounds.js)
+// ---------------------------------------------------------------------------
+const soundsRouter = require("./sounds")(jsonOnly);
+app.use("/api/sounds", soundsRouter);
 
 // ---------------------------------------------------------------------------
 // Start

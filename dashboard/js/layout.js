@@ -6,11 +6,11 @@
 
 const Layout = (() => {
   const DEFAULT = {
-    sizes: { kenku: 40, youtube: 30, embed: 30 },
-    visible: { scenes: true, kenku: true, youtube: true, embed: true },
+    sizes: { kenku: 34, youtube: 24, embed: 20, sounds: 22 },
+    visible: { scenes: true, kenku: true, youtube: true, embed: true, sounds: true },
   };
   const container = document.getElementById("panels");
-  const panels = [...container.querySelectorAll(".panel")]; // fixed order: A, B, C
+  const panels = [...container.querySelectorAll(".panel")]; // fixed order: A, B, C, D
   let state = Store.get("layout", structuredClone(DEFAULT));
 
   function save() { Store.set("layout", state); }

@@ -10,6 +10,8 @@ A dashboard for [Kenku FM](https://github.com/owlbear-rodeo/kenku-fm) that you o
 - **YouTube players**: as many as you like, each with its own volume and loop, so you can layer
   ambience under music. Paste a link, or **search YouTube** right in the dashboard.
 - **Website panel**: embed any site that allows it (with a clear message when it doesn't).
+- **Sound search**: search Freesound, listen to a preview, and download sounds straight into a
+  folder on your PC, with the credits written down for you.
 
 You can drag the panels to resize them and show or hide each one. The dashboard remembers
 your layout and links.
@@ -129,9 +131,10 @@ you, and saving fixes it. The broken copy is kept as `config.broken.json`.
 |---|---|
 | `port` | Dashboard port (default 4000) |
 | `kenku.host` / `kenku.port` | Must match Kenku → Settings → Remote |
-| `downloadsFolder` | (later) where downloaded sounds are saved; point a Kenku playlist here |
+| `downloadsFolder` | where the Sound search panel saves sounds (and `ATTRIBUTION.csv`) |
 | `apiKeys.youtube` | YouTube search key (see below) |
-| `apiKeys.freesound`, `apiKeys.pixabay` | (later) sound search keys |
+| `apiKeys.freesound` | Sound search key (see below) |
+| `apiKeys.pixabay` | not used yet (Pixabay has no sound API) |
 | `host` | `"0.0.0.0"` = "Allow other devices on my network" in Settings (e.g. a tablet). Off by default for safety |
 
 `config.json` is never uploaded to GitHub (it's in `.gitignore`), so your keys stay private.
@@ -155,6 +158,49 @@ The free allowance is about **100 searches a day** (it resets at midnight US Pac
 same search repeated within 30 minutes is free, because the helper remembers the results.
 Search only shows videos that allow embedding.
 
+## Sound search (optional, free)
+The **Sounds** panel searches [Freesound](https://freesound.org), a huge library of free sound
+effects and ambiences shared under Creative Commons licences. You need a free API key once:
+
+1. Make a free account at <https://freesound.org> and confirm your email.
+2. Open <https://freesound.org/apiv2/apply/>, fill in a name (e.g. `KenkuEnhanced`) and a short
+   description (e.g. `Personal tabletop sound dashboard`), accept the terms and submit.
+3. The page now lists your app. Copy the long value under **Client secret/Api key**
+   (not the shorter Client id).
+4. In the dashboard: **⚙ Settings** → paste it into the **Freesound** box → **Save** → **Test**.
+   It should say "✓ The Freesound key works."
+
+**Using it**
+- Type what you want (`tavern crowd`, `sword clash`, `rain on tent`) and press **Search**.
+  **Length** helps a lot: *Short effect* for one-off sounds, *Long ambience* for backgrounds.
+- **▶ Preview** plays it, or click anywhere on the waveform to jump there. Previews play through
+  the dashboard, so **in Kenku your players hear them too**. Turn down **Preview volume**, or
+  preview before the session.
+- **⬇ Download** saves an MP3 into your downloads folder (set it in ⚙ Settings). Type a
+  **subfolder** like `Ambience` or `Combat` first to keep things sorted. Files get tidy names like
+  `heavy-rain-on-roof_freesound-12345.mp3`, and a sound you already have shows **✓ Saved**.
+- **📂 Open folder** opens that folder on your PC. Kenku can't add files through its remote
+  control, so **drag the files from that window into a Kenku playlist or soundboard**.
+
+**Credits and licences.** Each result shows its licence:
+- **CC0** (green): public domain, use it however you like.
+- **CC BY**: free to use, but credit the author if you share or publish something with it
+  (a stream VOD, a YouTube video, an actual-play podcast).
+- **CC BY-NC**: as CC BY, and non-commercial use only.
+
+Every download is added to `ATTRIBUTION.csv` in the downloads folder (file, title, author,
+licence, link, date). It opens in Excel; copy from it when you need to give credit.
+
+Good to know:
+- Downloads are Freesound's high-quality MP3 previews (about 128 kbps), which sound fine on
+  Discord. Original WAV files need a full Freesound login, which isn't supported yet.
+- The free key allows 60 searches a minute and 2000 a day, far more than a session needs.
+  Repeating a search within 30 minutes doesn't count.
+- **BBC Sound Effects ↗** and **Pixabay ↗** open those sites' own search in a new tab (neither has
+  an API we can use). BBC sounds are free for **personal, educational and research use only**.
+  If downloading doesn't work inside Kenku's browser, open the site in your normal browser and
+  save the file into your downloads folder yourself.
+
 ## Updating
 When a new version is released, an **"Update available"** badge appears at the top of the
 dashboard. To update for now:
@@ -176,6 +222,10 @@ A proper installer with one-click updates is planned (see `docs/PLAN.md`).
 | `Could not read config.json` when starting | A quote, comma or bracket got lost while editing. Compare with `config.example.json`, or delete `config.json` (a fresh one is made on the next start) and add your key again |
 | Search says "No YouTube API key yet" | Follow **YouTube search** above, then restart the helper |
 | Search says the quota is used up | Wait until the next day, or paste links directly (that never uses quota) |
+| Sounds says "Freesound rejected the API key" | You probably copied the Client id. Use the longer **Client secret/Api key** from <https://freesound.org/apiv2/apply/> |
+| Sound downloads fail with "Couldn't create …" | The downloads folder in ⚙ Settings doesn't exist or isn't writable. Pick another folder, tick "Create the folder" and Save |
+| "Saved, but couldn't add it to ATTRIBUTION.csv" | The file is open in Excel, which locks it. Close Excel; the sound itself was saved |
+| **📂 Open folder** does nothing | The window may have opened behind Kenku. Check the taskbar |
 
 ## Project layout
 ```
@@ -184,6 +234,7 @@ helper/       Node.js helper server (Express)
   config.js     reads config.json
   check-kenku.js, mock-kenku.js
   scenes.js     saves scenes to data/scenes.json
+  sounds.js     Freesound search + download, ATTRIBUTION.csv
 dashboard/    the web page (plain HTML/CSS/JS, no build step)
 data/         your scenes (created automatically, not uploaded to GitHub)
 docs/         PLAN.md (roadmap), kenku-remote-api.md (verified API reference)

@@ -115,7 +115,7 @@ const Settings = (() => {
           }
           message("Testing…");
           try {
-            const r = await (await fetch("/api/settings/test-youtube", { method: "POST" })).json();
+            const r = await (await fetch(test.dataset.testUrl, { method: "POST" })).json();
             message(r.message, r.ok ? "ok" : "error");
           } catch {
             message("Couldn't reach the helper.", "error");
