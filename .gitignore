@@ -1,0 +1,14 @@
+# Installed packages (re-created by "npm install")
+node_modules/
+
+# Your personal settings and API keys - NEVER commit these
+config.json
+.env
+
+# Downloaded sounds (later phases) and logs
+downloads/
+*.log
+
+# OS clutter
+.DS_Store
+Thumbs.db

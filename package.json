@@ -1,0 +1,19 @@
+{
+  "name": "kenku-enhanced",
+  "version": "0.1.0",
+  "description": "A dashboard for Kenku FM: control playlists/soundboards, YouTube and embedded sites from one screen.",
+  "private": true,
+  "license": "GPL-3.0",
+  "main": "helper/server.js",
+  "scripts": {
+    "start": "node helper/server.js",
+    "check-kenku": "node helper/check-kenku.js",
+    "mock-kenku": "node helper/mock-kenku.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}

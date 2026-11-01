@@ -1,0 +1,12 @@
+{
+  "port": 4000,
+  "kenku": {
+    "host": "127.0.0.1",
+    "port": 3333
+  },
+  "downloadsFolder": "C:\\Users\\YOUR_NAME\\Music\\Kenku",
+  "apiKeys": {
+    "freesound": "",
+    "pixabay": ""
+  }
+}
