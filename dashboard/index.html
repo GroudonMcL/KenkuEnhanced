@@ -18,6 +18,7 @@
       <button class="toggle" data-toggle="youtube">YouTube</button>
       <button class="toggle" data-toggle="embed">Website</button>
       <button id="reset-layout" class="toggle" title="Reset panel sizes">Reset layout</button>
+      <button id="open-settings" class="toggle" title="Settings">⚙ Settings</button>
     </div>
   </header>
 
@@ -132,12 +133,76 @@
     </section>
   </main>
 
+  <!-- Settings pane (a pop-up dialog). settings.js fills it in and saves it. -->
+  <dialog id="settings-dialog" class="dialog">
+    <form id="settings-form" method="dialog">
+      <h2>Settings</h2>
+      <div id="settings-message" class="notice" hidden></div>
+
+      <fieldset>
+        <legend>Kenku Remote</legend>
+        <p class="hint">Must match Kenku FM → Settings → Remote.</p>
+        <div class="field-row">
+          <label>Address <input id="set-kenku-host" type="text" required></label>
+          <label class="narrow">Port <input id="set-kenku-port" type="number" min="1" max="65535" required></label>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>API keys</legend>
+        <p class="hint">Keys are saved in config.json on this PC only. Leave a box empty to keep the current key.</p>
+        <div class="key-row" data-key="youtube">
+          <label>YouTube <span class="hint">(for search – see README)</span>
+            <input type="password" autocomplete="off" spellcheck="false"></label>
+          <button type="button" class="small key-show" title="Show what you typed">👁</button>
+          <button type="button" class="small key-test">Test</button>
+          <button type="button" class="small danger key-remove">Remove</button>
+        </div>
+        <div class="key-row" data-key="freesound">
+          <label>Freesound <span class="hint">(later: sound search)</span>
+            <input type="password" autocomplete="off" spellcheck="false"></label>
+          <button type="button" class="small key-show" title="Show what you typed">👁</button>
+          <button type="button" class="small danger key-remove">Remove</button>
+        </div>
+        <div class="key-row" data-key="pixabay">
+          <label>Pixabay <span class="hint">(later: sound search)</span>
+            <input type="password" autocomplete="off" spellcheck="false"></label>
+          <button type="button" class="small key-show" title="Show what you typed">👁</button>
+          <button type="button" class="small danger key-remove">Remove</button>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Downloads folder</legend>
+        <p class="hint">Where downloaded sounds will go (later phase). Point a Kenku playlist at this folder.</p>
+        <input id="set-downloads" type="text" spellcheck="false">
+        <label class="check"><input id="set-create-folder" type="checkbox" checked> Create the folder if it doesn't exist</label>
+        <div id="set-downloads-status" class="hint"></div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Dashboard</legend>
+        <div class="field-row">
+          <label class="narrow">Port <input id="set-port" type="number" min="1" max="65535" required></label>
+        </div>
+        <label class="check"><input id="set-lan" type="checkbox"> Allow other devices on my network (e.g. a tablet) to open the dashboard</label>
+        <p class="hint">Changing these needs a helper restart: close the black window and double-click Start KenkuEnhanced.bat.</p>
+      </fieldset>
+
+      <div class="dialog-buttons">
+        <button type="button" id="settings-cancel" class="mid">Close</button>
+        <button type="submit" id="settings-save" class="mid primary">Save</button>
+      </div>
+    </form>
+  </dialog>
+
   <!-- Plain scripts, loaded in order. No build step needed. -->
   <script src="js/storage.js"></script>
   <script src="js/layout.js"></script>
   <script src="js/kenku-panel.js"></script>
   <script src="js/youtube-panel.js"></script>
   <script src="js/embed-panel.js"></script>
+  <script src="js/settings.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

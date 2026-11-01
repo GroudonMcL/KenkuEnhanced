@@ -8,7 +8,9 @@
 //   /health      → reports whether the helper and Kenku Remote are reachable
 //   /api/version → this app's version + latest version on GitHub (update check)
 //   /api/frame-check?url=... → does a website allow itself to be shown in an iframe?
-//   /api/youtube/search?q=...//   /api/frame-check?url=... → does a website allow itself to be shown in an iframe?type=video → YouTube search (needs apiKeys.youtube)
+//   /api/youtube/search?q=...&type=video → YouTube search (needs apiKeys.youtube)
+//   /api/settings → read / save settings (the dashboard's Settings pane)
+//   /api/scenes   → read / save your scenes (stored in data/scenes.json)
 
 const path = require("path");
 const express = require("express");
@@ -199,7 +201,7 @@ app.get("/api/youtube/search", async (req, res) => {
   const key = config.apiKeys.youtube;
   if (!key) {
     return res.status(400).json({
-      error: "No YouTube API key yet. Add one to config.json under apiKeys.youtube and restart the helper (see README → YouTube search).",
+      error: "No YouTube API key yet. Open ⚙ Settings (top right) and paste one in – the README explains how to get a free key.",
     });
   }
   const q = String(req.query.q || "").trim();
@@ -240,11 +242,113 @@ app.get("/api/youtube/search", async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
+// 7. Settings (used by the dashboard's ⚙ Settings pane)
+// ---------------------------------------------------------------------------
+// Only accept real JSON requests. A browser only lets *our own page* send JSON
+// here (other websites would need CORS permission, which we don't give for /api),
+// so random websites open in Kenku's browser can't change your settings.
+const jsonOnly = [
+  (req, res, next) => (req.is("application/json") ? next() : res.status(415).json({ error: "Expected JSON" })),
+  express.json({ limit: "1mb" }),
+];
+
+// What the helper is actually running with (port/LAN changes need a restart).
+const HOST = config.host || "127.0.0.1";
+const RUNNING = { port: config.port, host: HOST };
+
+// "AIzaSy...2fbQ" → "…2fbQ". The full key is never sent to the browser.
+function keyHint(key) {
+  return key ? { set: true, hint: "…" + key.slice(-4) } : { set: false, hint: "" };
+}
+
+function settingsForBrowser() {
+  const fs = require("fs");
+  return {
+    port: config.port,
+    lanAccess: config.host === "0.0.0.0",
+    kenku: { ...config.kenku },
+    downloadsFolder: config.downloadsFolder,
+    downloadsFolderExists: fs.existsSync(config.downloadsFolder),
+    apiKeys: Object.fromEntries(Object.entries(config.apiKeys).map(([k, v]) => [k, keyHint(v)])),
+    configError: config.loadError,
+    // true when saved settings differ from what's running → restart the helper
+    restartNeeded: config.port !== RUNNING.port || (config.host || "127.0.0.1") !== RUNNING.host,
+  };
+}
+
+app.get("/api/settings", (req, res) => res.json(settingsForBrowser()));
+
+app.put("/api/settings", jsonOnly, (req, res) => {
+  const b = req.body || {};
+  const changes = {};
+  const errors = [];
+  const validPort = (p) => Number.isInteger(p) && p >= 1 && p <= 65535;
+
+  if (b.port !== undefined) {
+    const p = Number(b.port);
+    validPort(p) ? (changes.port = p) : errors.push("Dashboard port must be a whole number from 1 to 65535.");
+  }
+  if (b.lanAccess !== undefined) changes.host = b.lanAccess ? "0.0.0.0" : "";
+  if (b.kenku) {
+    const host = String(b.kenku.host ?? config.kenku.host).trim();
+    const port = Number(b.kenku.port ?? config.kenku.port);
+    if (!host || /\s|\//.test(host)) errors.push("Kenku address should look like 127.0.0.1 (no spaces or slashes).");
+    if (!validPort(port)) errors.push("Kenku port must be a whole number from 1 to 65535.");
+    changes.kenku = { host, port };
+  }
+  if (b.downloadsFolder !== undefined) {
+    const folder = String(b.downloadsFolder).trim();
+    if (!folder) errors.push("Downloads folder can't be empty.");
+    changes.downloadsFolder = folder;
+    if (folder && b.createFolder) {
+      try {
+        require("fs").mkdirSync(folder, { recursive: true });
+      } catch (err) {
+        errors.push(`Couldn't create the downloads folder: ${err.message}`);
+      }
+    }
+  }
+  // API keys: a non-empty string sets it, null removes it, missing = unchanged.
+  if (b.apiKeys) {
+    changes.apiKeys = {};
+    for (const name of Object.keys(config.apiKeys)) {
+      const v = b.apiKeys[name];
+      if (v === null) changes.apiKeys[name] = "";
+      else if (typeof v === "string" && v.trim()) changes.apiKeys[name] = v.trim();
+    }
+  }
+
+  if (errors.length) return res.status(400).json({ error: errors.join(" ") });
+  try {
+    config.save(changes);
+  } catch (err) {
+    return res.status(500).json({ error: `Couldn't save config.json: ${err.message}` });
+  }
+  if (changes.apiKeys?.youtube !== undefined) searchCache.clear();
+  res.json(settingsForBrowser());
+});
+
+// Check the saved YouTube key with a tiny request (costs 1 quota unit, not 100).
+app.post("/api/settings/test-youtube", async (req, res) => {
+  const key = config.apiKeys.youtube;
+  if (!key) return res.json({ ok: false, message: "No YouTube key saved yet." });
+  try {
+    const params = new URLSearchParams({ part: "id", id: "jNQXAC9IVRw", key });
+    const r = await fetch("https://www.googleapis.com/youtube/v3/videos?" + params, { signal: AbortSignal.timeout(8000) });
+    const data = await r.json();
+    if (r.ok) return res.json({ ok: true, message: "✓ The YouTube key works." });
+    res.json({ ok: false, message: `✗ YouTube rejected the key: ${data.error?.message || r.status}` });
+  } catch (err) {
+    res.json({ ok: false, message: `Couldn't reach YouTube (${err.cause?.code || err.name}).` });
+  }
+});
+
+// ---------------------------------------------------------------------------
 // Start
 // ---------------------------------------------------------------------------
 // We listen on 127.0.0.1 (this computer only) by default, so nobody else on your
-// network can control Kenku. Set "host": "0.0.0.0" in config.json to allow a tablet.
-const HOST = config.host || "127.0.0.1";
+// network can control Kenku. "Allow other devices" in Settings switches this to
+// 0.0.0.0 so a tablet on your Wi-Fi can open the dashboard too.
 app.listen(config.port, HOST, () => {
   console.log("");
   console.log("  KenkuEnhanced helper is running.");

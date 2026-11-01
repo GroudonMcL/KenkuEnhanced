@@ -80,9 +80,14 @@ npm run mock-kenku
 starts a **fake** Kenku so you can try the dashboard with Kenku closed.
 Run it in a second window, with the real Kenku closed, because both use port 3333.
 
-## Settings: `config.json`
-Created automatically on first start from `config.example.json`. Edit it with Notepad,
-then restart the helper.
+## Settings
+Click **⚙ Settings** at the top right of the dashboard to change the Kenku address and port,
+your API keys, the downloads folder and network access. Click **Save** and the changes apply
+straight away; changing the dashboard port or network access needs a helper restart.
+
+Behind the scenes, Settings writes to `config.json` in the project folder. You can edit that file
+in Notepad too, but Settings avoids typing mistakes. If the file ever gets broken, Settings tells
+you, and saving fixes it. The broken copy is kept as `config.broken.json`.
 
 | Setting | Meaning |
 |---|---|
@@ -91,7 +96,7 @@ then restart the helper.
 | `downloadsFolder` | (later) where downloaded sounds are saved; point a Kenku playlist here |
 | `apiKeys.youtube` | YouTube search key (see below) |
 | `apiKeys.freesound`, `apiKeys.pixabay` | (later) sound search keys |
-| `host` | Optional. `"0.0.0.0"` lets other devices on your network (e.g. a tablet) use the dashboard. Off by default for safety |
+| `host` | `"0.0.0.0"` = "Allow other devices on my network" in Settings (e.g. a tablet). Off by default for safety |
 
 `config.json` is never uploaded to GitHub (it's in `.gitignore`), so your keys stay private.
 
@@ -106,16 +111,8 @@ YouTube Data API key. Google has no other official way to search YouTube.
 4. Go to **APIs & Services → Credentials → Create credentials → API key**. Copy the key.
 5. Recommended: click the key → under **API restrictions** choose **Restrict key** →
    tick **YouTube Data API v3** → **Save**.
-6. Open `config.json` in Notepad and find this line:
-   ```json
-       "youtube": "",
-   ```
-   Paste your key **between the two quotes**, so it looks like this:
-   ```json
-       "youtube": "AIzaSy...your-key...",
-   ```
-   Don't change anything else, and keep the quotes and the comma at the end.
-7. Close the helper window and start it again.
+6. In the dashboard, click **⚙ Settings**, paste the key into the **YouTube** box and click **Save**.
+7. Click **Test** next to the key. It should say "✓ The YouTube key works".
 
 The key stays in `config.json` on your PC. The browser never sees it, and it's never uploaded.
 The free allowance is about **100 searches a day** (it resets at midnight US Pacific time). The

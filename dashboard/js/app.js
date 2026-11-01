@@ -50,6 +50,8 @@
   KenkuPanel.init();
   YouTubePanel.init();
   EmbedPanel.init();
+  Settings.init();
+  window.addEventListener("settings-saved", checkHealth); // Kenku address may have changed
 
   checkHealth();
   setInterval(checkHealth, 5000);
