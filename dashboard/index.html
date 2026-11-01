@@ -89,8 +89,9 @@
       <template id="yt-deck-template">
         <div class="yt-deck">
           <div class="yt-deck-head">
-            <span class="yt-deck-name"></span>
+            <input class="yt-deck-name" type="text" maxlength="30" title="Click to rename" aria-label="Player name">
             <span class="yt-deck-title"></span>
+            <button type="button" class="small yt-collapse" title="Minimise / expand">▾</button>
             <button type="button" class="small yt-remove" title="Remove this player">✕</button>
           </div>
           <form class="url-row yt-form">

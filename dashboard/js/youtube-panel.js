@@ -40,6 +40,12 @@ const YouTubePanel = (() => {
     return { videoId, listId };
   }
 
+  // Make sure at least n players exist (Scenes use this); returns the deck list.
+  function ensureDecks(n) {
+    while (decks.length < n) addDeck();
+    return decks;
+  }
+
   // A link we can open in a new tab if embedding fails
   function linkFor(target) {
     if (target?.listId && !target.videoId) return `https://www.youtube.com/playlist?list=${target.listId}`;
@@ -48,7 +54,7 @@ const YouTubePanel = (() => {
   }
 
   // ---------------------------------------------------------------------------
-  // Saving: an array of { url, volume, loop }, one per deck
+  // Saving: an array of { name, url, volume, loop, collapsed }, one per deck
   // ---------------------------------------------------------------------------
   function save() {
     Store.set("youtube.decks", decks.map((d) => d.saved));
@@ -73,7 +79,13 @@ const YouTubePanel = (() => {
 
     const deck = {
       el,
-      saved: { url: saved.url || "", volume: saved.volume ?? 60, loop: !!saved.loop },
+      saved: {
+        name: saved.name || "",          // empty = use "Player 1", "Player 2"...
+        url: saved.url || "",
+        volume: saved.volume ?? 60,
+        loop: !!saved.loop,
+        collapsed: !!saved.collapsed,    // minimised?
+      },
       player: null,
       ready: false,
       pending: null,  // something to load once the player is ready
@@ -85,6 +97,15 @@ const YouTubePanel = (() => {
     q(".yt-volume").value = deck.saved.volume;
     q(".yt-volume-value").textContent = deck.saved.volume + "%";
     q(".yt-loop").classList.toggle("on", deck.saved.loop);
+    q(".yt-deck-name").value = deck.saved.name;
+    setCollapsed(deck.saved.collapsed);
+
+    function setCollapsed(on) {
+      deck.saved.collapsed = on;
+      el.classList.toggle("collapsed", on);
+      q(".yt-collapse").textContent = on ? "▸" : "▾";
+      q(".yt-collapse").title = on ? "Expand" : "Minimise";
+    }
 
     function message(text, kind = "warn", link) {
       const box = q(".yt-message");
@@ -164,6 +185,7 @@ const YouTubePanel = (() => {
           onReady: () => {
             deck.ready = true;
             deck.player.setVolume(deck.saved.volume);
+            deck.player.setLoop(deck.saved.loop);
             if (deck.pending) {
               deck.load(deck.pending.target, deck.pending.play);
               deck.pending = null;
@@ -187,19 +209,50 @@ const YouTubePanel = (() => {
       playing ? deck.player.pauseVideo() : deck.player.playVideo();
     });
 
-    q(".yt-loop").addEventListener("click", () => {
-      deck.saved.loop = !deck.saved.loop;
-      q(".yt-loop").classList.toggle("on", deck.saved.loop);
-      if (deck.ready) deck.player.setLoop(deck.saved.loop); // affects playlists
+    // Loop: single videos restart in onStateChange; playlists use setLoop.
+    q(".yt-loop").addEventListener("click", () => deck.setLoop(!deck.saved.loop));
+
+    q(".yt-volume").addEventListener("input", (e) => deck.setVolume(Number(e.target.value)));
+
+    q(".yt-collapse").addEventListener("click", () => {
+      setCollapsed(!deck.saved.collapsed);
       save();
     });
 
-    q(".yt-volume").addEventListener("input", (e) => {
-      deck.saved.volume = Number(e.target.value);
-      q(".yt-volume-value").textContent = deck.saved.volume + "%";
-      if (deck.ready) deck.player.setVolume(deck.saved.volume);
+    // Rename: just type in the name box. Empty = back to "Player N".
+    q(".yt-deck-name").addEventListener("input", (e) => {
+      deck.saved.name = e.target.value.trim();
       save();
+      renderResults(); // result buttons show player names
     });
+    q(".yt-deck-name").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") e.target.blur();
+    });
+
+    // --- Small helpers other parts of the dashboard (Scenes) use ---
+    // Set the volume (0-100). persist=false is used during fades so we don't
+    // save 20 times a second; the final value is saved.
+    deck.setVolume = (v, persist = true) => {
+      v = Math.max(0, Math.min(100, Math.round(v)));
+      if (deck.ready) deck.player.setVolume(v);
+      q(".yt-volume").value = v;
+      q(".yt-volume-value").textContent = v + "%";
+      if (persist) {
+        deck.saved.volume = v;
+        save();
+      }
+    };
+    deck.currentVolume = () => (deck.ready ? deck.player.getVolume() : deck.saved.volume);
+    deck.isPlaying = () => deck.ready && deck.player.getPlayerState() === YT.PlayerState.PLAYING;
+    deck.pause = () => deck.ready && deck.player.pauseVideo();
+    deck.play = () => deck.ready && deck.player.playVideo();
+    deck.setLoop = (on) => {
+      deck.saved.loop = !!on;
+      q(".yt-loop").classList.toggle("on", deck.saved.loop);
+      if (deck.ready) deck.player.setLoop(deck.saved.loop);
+      save();
+    };
+    deck.displayName = () => deck.saved.name || q(".yt-deck-name").placeholder;
 
     q(".yt-remove").addEventListener("click", () => removeDeck(deck));
 
@@ -221,17 +274,17 @@ const YouTubePanel = (() => {
     refreshDeckLabels();
   }
 
-  function addDeck(saved = { url: "", volume: 60, loop: false }, opts) {
+  function addDeck(saved = { name: "", url: "", volume: 60, loop: false }, opts) {
     const d = createDeck(saved, opts);
     save();
     refreshDeckLabels();
     return d;
   }
 
-  // Names ("Player 1", "Player 2"...), remove buttons and result buttons depend on the deck count.
+  // Default names ("Player 1", "Player 2"...), remove buttons and result buttons depend on the deck count.
   function refreshDeckLabels() {
     decks.forEach((d, i) => {
-      d.el.querySelector(".yt-deck-name").textContent = `Player ${i + 1}`;
+      d.el.querySelector(".yt-deck-name").placeholder = `Player ${i + 1}`;
       d.el.querySelector(".yt-remove").hidden = decks.length <= 1;
     });
     renderResults();
@@ -302,10 +355,10 @@ const YouTubePanel = (() => {
       // One button per player, plus "new player"
       const actions = document.createElement("div");
       actions.className = "yt-result-actions";
-      decks.forEach((d, i) => {
+      decks.forEach((d) => {
         const b = document.createElement("button");
         b.className = "small";
-        b.textContent = `▶ Player ${i + 1}`;
+        b.textContent = `▶ ${d.displayName()}`;
         b.onclick = () => d.loadUrl(url, true);
         actions.appendChild(b);
       });
@@ -349,5 +402,5 @@ const YouTubePanel = (() => {
     document.head.appendChild(s);
   }
 
-  return { init, parse };
+  return { init, parse, decks: () => decks, ensureDecks };
 })();
