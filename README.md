@@ -106,10 +106,15 @@ YouTube Data API key. Google has no other official way to search YouTube.
 4. Go to **APIs & Services → Credentials → Create credentials → API key**. Copy the key.
 5. Recommended: click the key → under **API restrictions** choose **Restrict key** →
    tick **YouTube Data API v3** → **Save**.
-6. Open `config.json` in Notepad and paste it in:
+6. Open `config.json` in Notepad and find this line:
    ```json
-   "apiKeys": { "youtube": "PASTE-YOUR-KEY-HERE", "freesound": "", "pixabay": "" }
+       "youtube": "",
    ```
+   Paste your key **between the two quotes**, so it looks like this:
+   ```json
+       "youtube": "AIzaSy...your-key...",
+   ```
+   Don't change anything else, and keep the quotes and the comma at the end.
 7. Close the helper window and start it again.
 
 The key stays in `config.json` on your PC. The browser never sees it, and it's never uploaded.
@@ -135,6 +140,7 @@ A proper installer with one-click updates is planned (see `docs/PLAN.md`).
 | `Port 4000 is already in use` | The helper is already running in another window, or change `port` in `config.json` |
 | A website shows "can't be shown inside the dashboard" | That site forbids embedding. Use **↗ New tab**, which opens it as a Kenku tab so its audio still reaches Discord |
 | YouTube says "doesn't allow it to be embedded" | The uploader disabled embedding. Use the **Open on YouTube in a new tab** button |
+| `Could not read config.json` when starting | A quote, comma or bracket got lost while editing. Compare with `config.example.json`, or delete `config.json` (a fresh one is made on the next start) and add your key again |
 | Search says "No YouTube API key yet" | Follow **YouTube search** above, then restart the helper |
 | Search says the quota is used up | Wait until the next day, or paste links directly (that never uses quota) |
 

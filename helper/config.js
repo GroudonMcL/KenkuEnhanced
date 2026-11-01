@@ -22,7 +22,15 @@ function loadConfig() {
     try {
       user = JSON.parse(fs.readFileSync(CONFIG_PATH, "utf8"));
     } catch (err) {
-      console.error(`!! Could not read config.json (${err.message}). Using defaults.`);
+      // Usually a missing/extra comma, quote or bracket after hand-editing.
+      console.error("");
+      console.error("!! Could not read config.json – there's a typing mistake in it:");
+      console.error(`!!   ${err.message}`);
+      console.error("!! Compare it with config.example.json (every line except the last in a");
+      console.error("!! { } block ends with a comma, and every text value is in \"quotes\").");
+      console.error("!! Or delete config.json and restart: a fresh one will be created.");
+      console.error("!! Using default settings for now (YouTube search won't work).");
+      console.error("");
     }
   }
   // Merge one level deep so e.g. { kenku: { port: 3334 } } keeps the default host.
