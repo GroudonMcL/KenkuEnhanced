@@ -14,6 +14,7 @@
     <a id="update-badge" class="update-badge" hidden target="_blank" rel="noopener">Update available</a>
     <span class="spacer"></span>
     <div class="toggles" aria-label="Show or hide panels">
+      <button class="toggle" data-toggle="scenes">Scenes</button>
       <button class="toggle" data-toggle="kenku">Kenku</button>
       <button class="toggle" data-toggle="youtube">YouTube</button>
       <button class="toggle" data-toggle="embed">Website</button>
@@ -21,6 +22,21 @@
       <button id="open-settings" class="toggle" title="Settings">⚙ Settings</button>
     </div>
   </header>
+
+  <!-- Scenes bar: one click = playlist + sounds + YouTube + volumes, with fades.
+       Keys 1-9 trigger the first nine scenes, 0 fades everything out. -->
+  <section id="scenes-bar" class="scenes-bar" aria-label="Scenes">
+    <div id="scene-buttons" class="scene-buttons"></div>
+    <div class="scene-tools">
+      <button id="scene-capture" class="mid" title="Make a new scene from what's playing right now">＋ Save current as scene</button>
+      <button id="scene-edit-mode" class="mid" title="Click a scene to edit it instead of playing it">✎ Edit scenes</button>
+      <button id="scene-silence" class="mid danger" title="Fade everything out (key 0)">🔇 Fade out all</button>
+    </div>
+    <div id="scene-info" class="scene-info" hidden>
+      <span id="scene-info-text"></span>
+      <button id="scene-link" class="small" hidden>↗ Open scene link</button>
+    </div>
+  </section>
 
   <!-- The three panels. layout.js puts drag handles between the visible ones. -->
   <main id="panels">
@@ -196,6 +212,65 @@
     </form>
   </dialog>
 
+  <!-- Scene editor (pop-up). scenes.js fills it in. -->
+  <dialog id="scene-dialog" class="dialog">
+    <form id="scene-form" method="dialog">
+      <h2 id="scene-dialog-title">Scene</h2>
+      <div id="scene-message" class="notice" hidden></div>
+
+      <div class="field-row">
+        <label>Name <input id="sc-name" type="text" maxlength="40" required></label>
+        <label class="narrow">Colour <input id="sc-color" type="color"></label>
+        <label class="narrow">Fade (seconds) <input id="sc-fade" type="number" min="0" max="20" step="0.5"></label>
+      </div>
+
+      <fieldset>
+        <legend>🎵 Kenku music</legend>
+        <select id="sc-music"></select>
+        <div class="volume-row">
+          <span class="label">Volume</span>
+          <input id="sc-music-volume" type="range" min="0" max="100" step="1">
+          <span id="sc-music-volume-value" class="volume-value"></span>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>🔔 Soundboard sounds</legend>
+        <p class="hint">Ticked sounds start with the scene. Volume, looping and fades come from each sound's settings in Kenku.</p>
+        <div id="sc-sounds" class="check-grid"></div>
+        <label class="check"><input id="sc-sounds-stop" type="checkbox"> Stop other sounds that are playing</label>
+      </fieldset>
+
+      <fieldset>
+        <legend>▶ YouTube</legend>
+        <div id="sc-youtube" class="sc-youtube"></div>
+        <div class="field-row">
+          <button type="button" id="sc-yt-add" class="small">＋ Add a YouTube link</button>
+          <button type="button" id="sc-yt-current" class="small">Use what's playing now</button>
+        </div>
+        <label class="check"><input id="sc-yt-stop" type="checkbox"> Pause other YouTube players</label>
+      </fieldset>
+
+      <fieldset>
+        <legend>Extras</legend>
+        <label>Link (e.g. your Tabletop Audio SoundPad share link)
+          <input id="sc-link" type="url" placeholder="https://…"></label>
+        <label class="check"><input id="sc-link-auto" type="checkbox"> Open the link in a new tab when the scene starts</label>
+        <label>Notes (shown while the scene is active)
+          <textarea id="sc-notes" rows="2" maxlength="500"></textarea></label>
+      </fieldset>
+
+      <div class="dialog-buttons">
+        <button type="button" id="sc-delete" class="mid danger">Delete</button>
+        <button type="button" id="sc-left" class="mid" title="Move earlier">◀</button>
+        <button type="button" id="sc-right" class="mid" title="Move later">▶</button>
+        <span class="spacer"></span>
+        <button type="button" id="sc-cancel" class="mid">Cancel</button>
+        <button type="submit" class="mid primary">Save scene</button>
+      </div>
+    </form>
+  </dialog>
+
   <!-- Plain scripts, loaded in order. No build step needed. -->
   <script src="js/storage.js"></script>
   <script src="js/layout.js"></script>
@@ -203,6 +278,7 @@
   <script src="js/youtube-panel.js"></script>
   <script src="js/embed-panel.js"></script>
   <script src="js/settings.js"></script>
+  <script src="js/scenes.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

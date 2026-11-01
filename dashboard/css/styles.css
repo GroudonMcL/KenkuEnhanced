@@ -216,3 +216,38 @@ select {
 .key-row button { min-height: 44px; }
 .dialog-buttons { display: flex; justify-content: flex-end; gap: 8px; position: sticky; bottom: 0;
   background: var(--panel); padding-top: 8px; }
+
+/* ---------- Scenes bar ---------- */
+.scenes-bar {
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch;
+  padding: 8px 14px; background: var(--panel); border-bottom: 1px solid var(--border);
+}
+.scenes-bar[hidden] { display: none; }
+.scene-buttons { display: flex; flex-wrap: wrap; gap: 8px; flex: 1; min-width: 200px; }
+.scene-buttons .empty { color: var(--muted); align-self: center; }
+.scene-btn {
+  min-height: 64px; min-width: 130px; padding: 6px 14px 6px 12px; text-align: left;
+  border-left: 8px solid var(--scene-color, var(--border));
+  display: flex; flex-direction: column; justify-content: center; gap: 2px;
+}
+.scene-btn .scene-name { font-size: 1.15rem; font-weight: 700; }
+.scene-btn .scene-sub { font-size: .8rem; color: var(--muted); white-space: nowrap; }
+.scene-btn .scene-key { font-size: .75rem; color: var(--muted); }
+.scene-btn.on { background: var(--accent); color: var(--accent-text); border-color: var(--accent); border-left-color: var(--scene-color); }
+.scene-btn.on .scene-sub, .scene-btn.on .scene-key { color: var(--accent-text); }
+.scene-btn.busy { animation: pulse 1s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .6; } }
+.scenes-bar.editing .scene-btn { outline: 2px dashed var(--muted); outline-offset: -4px; }
+.scene-tools { display: flex; gap: 8px; flex-wrap: wrap; align-items: stretch; }
+.scene-info { flex-basis: 100%; display: flex; gap: 10px; align-items: center; color: var(--muted); }
+.scene-info[hidden] { display: none; }
+
+/* Scene editor bits */
+.check-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 4px 12px; }
+.check-grid h4 { grid-column: 1 / -1; margin: 6px 0 0; color: var(--muted); font-size: .9rem; }
+.sc-youtube { display: flex; flex-direction: column; gap: 6px; }
+.sc-yt-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.sc-yt-row input[type=text] { flex: 1; min-width: 200px; }
+.sc-yt-row input[type=range] { width: 120px; accent-color: var(--accent); }
+.dialog .spacer { flex: 1; }
+.dialog textarea { resize: vertical; }

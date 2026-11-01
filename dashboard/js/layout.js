@@ -7,7 +7,7 @@
 const Layout = (() => {
   const DEFAULT = {
     sizes: { kenku: 40, youtube: 30, embed: 30 },
-    visible: { kenku: true, youtube: true, embed: true },
+    visible: { scenes: true, kenku: true, youtube: true, embed: true },
   };
   const container = document.getElementById("panels");
   const panels = [...container.querySelectorAll(".panel")]; // fixed order: A, B, C
@@ -19,6 +19,9 @@ const Layout = (() => {
   function render() {
     container.querySelectorAll(".splitter").forEach((s) => s.remove());
     const visible = panels.filter((p) => state.visible[p.dataset.panel] !== false);
+
+    // The scenes bar isn't a resizable panel – it's just shown or hidden.
+    document.getElementById("scenes-bar").hidden = state.visible.scenes === false;
 
     panels.forEach((p) => {
       p.hidden = !visible.includes(p);
@@ -79,7 +82,7 @@ const Layout = (() => {
         const key = b.dataset.toggle;
         state.visible[key] = state.visible[key] === false;
         // never hide everything
-        if (!Object.values(state.visible).some(Boolean)) state.visible[key] = true;
+        if (!panels.some((p) => state.visible[p.dataset.panel] !== false)) state.visible[key] = true;
         save();
         render();
       });

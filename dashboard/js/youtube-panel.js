@@ -154,8 +154,9 @@ const YouTubePanel = (() => {
         2: "That doesn't look like a valid video ID.",
         5: "This video can't play in an embedded player.",
         100: "Video not found – it may be private or deleted.",
-        101: "The owner of this video doesn't allow it to be embedded.",
-        150: "The owner of this video doesn't allow it to be embedded.",
+        // YouTube uses 101/150 both for "embedding disabled" and "blocked here"
+        101: "This video can't be played inside the dashboard (embedding is turned off, or it's blocked in your region).",
+        150: "This video can't be played inside the dashboard (embedding is turned off, or it's blocked in your region).",
         153: "YouTube refused the embed (missing page referrer).",
       };
       message(`${reasons[e.data] || "YouTube error " + e.data} Try opening it in a new tab instead.`, "error", linkFor(deck.target));

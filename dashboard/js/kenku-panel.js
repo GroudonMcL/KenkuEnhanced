@@ -255,5 +255,14 @@ const KenkuPanel = (() => {
     setInterval(pollSounds, 1500);
   }
 
-  return { init, reload: loadLibrary };
+  return {
+    init,
+    reload: loadLibrary,
+    // Used by Scenes:
+    api,                                        // raw call to Kenku through the helper
+    library: () => library,                     // playlists, tracks, soundboards, sounds
+    playback: () => playback,                   // last known playlist playback
+    playingSounds: () => playingSoundIds,       // Set of sound ids playing now
+    refresh: () => { pollPlayback(); pollSounds(); },
+  };
 })();
