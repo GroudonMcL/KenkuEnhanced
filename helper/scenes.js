@@ -15,33 +15,11 @@
 //   link: "https://tabletopaudio.com/...", notes: "..."
 // }
 
-const fs = require("fs");
-const path = require("path");
 const express = require("express");
+const { readList, writeList } = require("./datafile");
 
-const DATA_DIR = path.join(__dirname, "..", "data");
-const FILE = path.join(DATA_DIR, "scenes.json");
-const BACKUP = path.join(DATA_DIR, "scenes.backup.json");
-
-function readScenes() {
-  if (!fs.existsSync(FILE)) return [];
-  try {
-    const data = JSON.parse(fs.readFileSync(FILE, "utf8"));
-    return Array.isArray(data.scenes) ? data.scenes : [];
-  } catch (err) {
-    console.error(`!! Could not read data/scenes.json (${err.message}). Is data/scenes.backup.json OK?`);
-    return [];
-  }
-}
-
-function writeScenes(scenes) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-  // Keep the previous version as a backup, in case of a mistake.
-  if (fs.existsSync(FILE)) fs.copyFileSync(FILE, BACKUP);
-  const tmp = FILE + ".tmp";
-  fs.writeFileSync(tmp, JSON.stringify({ version: 1, scenes }, null, 2) + "\n", "utf8");
-  fs.renameSync(tmp, FILE); // swap in the new file in one step
-}
+const readScenes = () => readList("scenes") || [];
+const writeScenes = (scenes) => writeList("scenes", scenes);
 
 // Basic sanity check so a bug can't save rubbish over your scenes.
 function validate(scenes) {

@@ -63,9 +63,26 @@ API keys live (they never reach the browser) and where files get written to disk
 - Ideas for later: Freesound OAuth for original files, "similar sounds", licence filter,
   a downloads browser that adds sounds to scenes once Kenku can import.
 
-### Phase 4 – Tabletop Audio links
-- Save custom SoundPad share links per scene; open them in the embed panel.
-- **No scraping/downloading of SoundPad audio** (not CC-licensed).
+### Phase 4 – Tabletop Audio links (built)
+- **Finding:** tabletopaudio.com sends `X-Frame-Options: SAMEORIGIN`, so SoundPads can't be
+  shown in the embed panel. They open in a new Kenku tab instead (its audio still reaches
+  Discord).
+- **Finding:** Kenku's `setWindowOpenHandler` turns every `window.open` into a new tab and
+  ignores target names, so a tab can't be reused. Scenes therefore auto-open a link at most
+  once per dashboard visit (the "↗ Open scene link" button always opens it).
+- Saved links library: `data/links.json` via `/api/links` (`{id, name, url, openIn:
+  auto|panel|tab}`), shown as buttons in the Website panel with ☆ Save / ✎ Edit links.
+  "Auto" uses the panel unless the host is known to block framing (the frame check
+  remembers blocked hosts in localStorage, with tabletopaudio.com built in).
+- SoundPad browser: `/api/links/soundpads` reads the list of SoundPads (name, picture, sound
+  count, categories) from `soundpad.html` once a day, cached in `data/soundpads.json` for
+  offline use. If the page layout changes, it falls back to a plain link.
+- Scene editor: a menu with your saved links and all SoundPads fills the scene's link.
+- `helper/datafile.js` now does the safe write + backup for scenes and links.
+- **No scraping/downloading of SoundPad audio** (not CC-licensed). Only the public list
+  page is read.
+- Ideas for later: several links per scene, a "close the old SoundPad tab" helper if a Kenku
+  fork ever exposes tab control.
 
 ### Phase 5 – Image → vibe
 - Step 1: manual tags typed per scene → search sounds / suggest a scene.

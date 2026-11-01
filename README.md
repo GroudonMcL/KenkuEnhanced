@@ -9,7 +9,8 @@ A dashboard for [Kenku FM](https://github.com/owlbear-rodeo/kenku-fm) that you o
   volume, and what's playing now.
 - **YouTube players**: as many as you like, each with its own volume and loop, so you can layer
   ambience under music. Paste a link, or **search YouTube** right in the dashboard.
-- **Website panel**: embed any site that allows it (with a clear message when it doesn't).
+- **Website panel**: embed any site that allows it (with a clear message when it doesn't),
+  plus **saved link buttons** and a browser for **Tabletop Audio's SoundPads**.
 - **Sound search**: search Freesound, listen to a preview, and download sounds straight into a
   folder on your PC, with the credits written down for you.
 
@@ -113,10 +114,46 @@ Good to know:
   because Kenku's remote control can only start and stop them.
 - **"Leave the music as it is"** makes a scene that only changes sounds or YouTube, e.g. a
   "Thunderstorm" scene layered over whatever music is playing.
-- **Link:** paste your Tabletop Audio SoundPad share link here. While the scene is active, a
-  button opens it, or tick "open when the scene starts".
+- **Link:** pick one of your saved links or a Tabletop Audio SoundPad from the menu, or paste
+  any address (e.g. your Custom SoundPad share link). While the scene is active, a button opens
+  it. Tick "open the link when the scene starts" to open it automatically. See
+  **Links and Tabletop Audio** below for where it opens.
 - Scenes are saved in the `data` folder (`data/scenes.json`). Copy that folder to back them up.
   The previous version is always kept as `scenes.backup.json`.
+
+## Links and Tabletop Audio
+The **Website** panel keeps your favourite sites as buttons.
+
+- **Save a link:** type or paste an address in the box at the top and click **☆ Save**. Give it a
+  name and choose where it opens:
+  - **Automatic** (normal): inside the Website panel if the site allows it, otherwise in a new
+    Kenku tab. The dashboard remembers which sites refuse.
+  - **The Website panel** or **A new Kenku tab** to force one or the other.
+  Buttons that open a new tab have a **↗** after their name.
+- **Change, reorder or delete links:** click **✎ Edit links**, then click a link.
+- **🎲 SoundPads** shows all of Tabletop Audio's SoundPads with pictures. You can filter them by
+  category or by a word like `tavern`. **↗ Open** opens a SoundPad, and **☆ Save** adds it to
+  your links, so scenes can use it.
+
+**Why SoundPads open in a new tab:** Tabletop Audio doesn't allow its site to be shown inside
+other pages, so it can't sit in the Website panel. A new Kenku tab is just as good, because Kenku
+sends the sound of every tab to Discord. Switch back to the dashboard tab to keep using it.
+
+**Your own Custom SoundPad:** open **Custom SoundPad**, build your mix, click **Get Link** on
+Tabletop Audio, then paste that link into the address box here and click **☆ Save** (or paste it
+straight into a scene's Link box).
+
+Good to know:
+- Kenku opens a **new** tab every time a page asks for one (it can't reuse a tab). So when a
+  scene opens its link automatically, the dashboard skips links it has already opened since you
+  loaded the dashboard. That way, switching between scenes doesn't pile up tabs. If you closed
+  that tab, click **↗ Open scene link** under the scene buttons.
+- Close SoundPad tabs you no longer need, or their sounds keep playing.
+- The dashboard only reads Tabletop Audio's list of SoundPads (once a day). The sounds always
+  play from Tabletop Audio's own site. They are free to use but not licensed for downloading, so
+  the dashboard never downloads them. If you enjoy them, consider
+  [supporting Tabletop Audio on Patreon](https://www.patreon.com/tabletopaudio).
+- Links are saved in `data/links.json` (the previous version is kept as `links.backup.json`).
 
 ## Settings
 Click **⚙ Settings** at the top right of the dashboard to change the Kenku address and port,
@@ -217,7 +254,9 @@ A proper installer with one-click updates is planned (see `docs/PLAN.md`).
 | Pill says **Kenku not reachable** | Kenku isn't open, or Remote is off, or the port differs from `config.json`. Run `npm run check-kenku` |
 | Pill says **Helper offline** | The black helper window was closed. Start it again |
 | `Port 4000 is already in use` | The helper is already running in another window, or change `port` in `config.json` |
-| A website shows "can't be shown inside the dashboard" | That site forbids embedding. Use **↗ New tab**, which opens it as a Kenku tab so its audio still reaches Discord |
+| A website shows "can't be shown inside the dashboard" | That site forbids embedding. Use **↗ New tab**, which opens it as a Kenku tab so its audio still reaches Discord. Saved links set to Automatic will open it in a tab from now on |
+| The SoundPad list says it couldn't load | You're offline, or Tabletop Audio changed its page. Use the **Tabletop Audio SoundPads** link instead. Your saved links still work |
+| Scene switching opened lots of Kenku tabs | Shouldn't happen any more: each link opens at most once per dashboard visit. Reloading the dashboard resets this |
 | YouTube says "doesn't allow it to be embedded" | The uploader disabled embedding. Use the **Open on YouTube in a new tab** button |
 | `Could not read config.json` when starting | A quote, comma or bracket got lost while editing. Compare with `config.example.json`, or delete `config.json` (a fresh one is made on the next start) and add your key again |
 | Search says "No YouTube API key yet" | Follow **YouTube search** above, then restart the helper |
@@ -235,8 +274,10 @@ helper/       Node.js helper server (Express)
   check-kenku.js, mock-kenku.js
   scenes.js     saves scenes to data/scenes.json
   sounds.js     Freesound search + download, ATTRIBUTION.csv
+  links.js      saved links (data/links.json) + Tabletop Audio SoundPad list
+  datafile.js   safe reading/writing of the files in data/
 dashboard/    the web page (plain HTML/CSS/JS, no build step)
-data/         your scenes (created automatically, not uploaded to GitHub)
+data/         your scenes and links (created automatically, not uploaded to GitHub)
 docs/         PLAN.md (roadmap), kenku-remote-api.md (verified API reference)
 ```
 

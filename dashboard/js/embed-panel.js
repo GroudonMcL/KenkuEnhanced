@@ -6,9 +6,30 @@
 // and read its X-Frame-Options / Content-Security-Policy headers. If framing is
 // blocked we show a clear message and an "open in new tab" button instead.
 // (In Kenku's browser a new tab is a new Kenku tab, so its audio still reaches Discord.)
+//
+// We also remember which sites refused, so next time (e.g. from a scene or a saved
+// link) they can go straight to a new tab. Saved links themselves live in links.js.
 
 const EmbedPanel = (() => {
   const $ = (id) => document.getElementById(id);
+  let currentUrl = "";
+
+  // host → true for sites that don't allow embedding. Tabletop Audio is known.
+  const blocked = Store.get("embed.blockedHosts", { "tabletopaudio.com": true });
+  const hostOf = (url) => {
+    try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return ""; }
+  };
+  function isBlocked(url) {
+    const host = hostOf(url);
+    return Object.keys(blocked).some((h) => host === h || host.endsWith("." + h));
+  }
+  function rememberBlocked(url, isBlockedNow) {
+    const host = hostOf(url);
+    if (!host) return;
+    if (isBlockedNow) blocked[host] = true;
+    else delete blocked[host];
+    Store.set("embed.blockedHosts", blocked);
+  }
 
   function normalise(text) {
     text = text.trim();
@@ -25,6 +46,8 @@ const EmbedPanel = (() => {
     return box;
   }
 
+  // In Kenku every window.open becomes a new Kenku tab (it ignores tab names,
+  // so we can't reuse a tab).
   function openNewTab(url) {
     if (url) window.open(url, "_blank");
   }
@@ -34,6 +57,7 @@ const EmbedPanel = (() => {
     if (!url) return;
     $("embed-url").value = url;
     Store.set("embed.url", url);
+    currentUrl = url;
 
     const frame = $("embed-iframe");
     const wrap = frame.parentElement;
@@ -47,8 +71,12 @@ const EmbedPanel = (() => {
       /* helper unreachable – just try loading it */
     }
 
+    if (check.allowed !== null && check.allowed !== undefined) rememberBlocked(url, check.allowed === false);
+    if (url !== currentUrl) return; // something else was loaded while we were checking
+
     if (check.allowed === false) {
       frame.src = "about:blank";
+      currentUrl = "";
       wrap.hidden = true;
       const box = message(`🚫 This site can't be shown inside the dashboard. ${check.reason}`, "error");
       const b = document.createElement("button");
@@ -75,13 +103,10 @@ const EmbedPanel = (() => {
       load($("embed-url").value);
     });
     $("embed-newtab").addEventListener("click", () => openNewTab(normalise($("embed-url").value)));
-    document.querySelectorAll(".presets [data-url]").forEach((b) => {
-      b.addEventListener("click", () => load(b.dataset.url));
-    });
 
     const saved = Store.get("embed.url", "");
     if (saved) load(saved);
   }
 
-  return { init };
+  return { init, load, openNewTab, isBlocked, normalise, current: () => currentUrl };
 })();

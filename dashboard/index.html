@@ -135,11 +135,30 @@
         <input id="embed-url" type="text" placeholder="https://…" autocomplete="off">
         <button type="submit" class="mid primary">Load</button>
         <button type="button" id="embed-newtab" class="mid" title="Open in a new Kenku tab">↗ New tab</button>
+        <button type="button" id="link-save-current" class="mid" title="Save this address as a link button">☆ Save</button>
       </form>
-      <div class="presets">
-        <button type="button" class="small" data-url="https://tabletopaudio.com/soundpad.html">Tabletop Audio SoundPad</button>
-        <button type="button" class="small" data-url="https://tabletopaudio.com/">Tabletop Audio</button>
-        <button type="button" class="small" data-url="https://example.com/">example.com (test)</button>
+
+      <!-- Saved links (links.js). Click = open; in edit mode, click = edit. -->
+      <div class="link-bar">
+        <div id="link-list" class="link-list"></div>
+        <div class="link-tools">
+          <button type="button" id="soundpad-toggle" class="small" title="Browse Tabletop Audio's SoundPads">🎲 SoundPads</button>
+          <button type="button" id="link-edit-mode" class="small" title="Click a link to rename, change or delete it">✎ Edit links</button>
+        </div>
+      </div>
+
+      <!-- Tabletop Audio SoundPad browser -->
+      <div id="soundpad-browser" class="soundpad-browser" hidden>
+        <div class="soundpad-head">
+          <input id="soundpad-filter" type="search" placeholder="Filter SoundPads (e.g. tavern)" autocomplete="off">
+          <button type="button" id="soundpad-close" class="small">✕ Close</button>
+        </div>
+        <div id="soundpad-cats" class="tabs"></div>
+        <div id="soundpad-message" class="notice" hidden></div>
+        <div id="soundpad-grid" class="soundpad-grid"></div>
+        <p class="hint">SoundPads run on Tabletop Audio's own site, so they open in a new Kenku tab
+          (their audio still reaches Discord). Tabletop Audio is free and fan-supported:
+          <a href="https://www.patreon.com/tabletopaudio" target="_blank" rel="noopener">support them on Patreon</a>.</p>
       </div>
       <div id="embed-message" class="notice" hidden></div>
       <div class="embed-frame">
@@ -259,6 +278,31 @@
     </form>
   </dialog>
 
+  <!-- Link editor (pop-up). links.js fills it in. -->
+  <dialog id="link-dialog" class="dialog">
+    <form id="link-form" method="dialog">
+      <h2 id="link-dialog-title">Link</h2>
+      <div id="link-message" class="notice" hidden></div>
+      <label>Name <input id="ln-name" type="text" maxlength="80" required></label>
+      <label>Address <input id="ln-url" type="url" placeholder="https://…" required></label>
+      <label>Open in
+        <select id="ln-open">
+          <option value="auto">Automatic (Website panel if the site allows it, otherwise a new tab)</option>
+          <option value="panel">The Website panel</option>
+          <option value="tab">A new Kenku tab</option>
+        </select></label>
+      <p class="hint">Tip: in Tabletop Audio's Custom SoundPad, click <b>Get Link</b> and paste that link here.</p>
+      <div class="dialog-buttons">
+        <button type="button" id="ln-delete" class="mid danger">Delete</button>
+        <button type="button" id="ln-left" class="mid" title="Move earlier">◀</button>
+        <button type="button" id="ln-right" class="mid" title="Move later">▶</button>
+        <span class="spacer"></span>
+        <button type="button" id="ln-cancel" class="mid">Cancel</button>
+        <button type="submit" class="mid primary">Save link</button>
+      </div>
+    </form>
+  </dialog>
+
   <!-- Scene editor (pop-up). scenes.js fills it in. -->
   <dialog id="scene-dialog" class="dialog">
     <form id="scene-form" method="dialog">
@@ -300,9 +344,10 @@
 
       <fieldset>
         <legend>Extras</legend>
-        <label>Link (e.g. your Tabletop Audio SoundPad share link)
+        <label>Link (e.g. a Tabletop Audio SoundPad or your Custom SoundPad share link)
+          <select id="sc-link-pick"></select>
           <input id="sc-link" type="url" placeholder="https://…"></label>
-        <label class="check"><input id="sc-link-auto" type="checkbox"> Open the link in a new tab when the scene starts</label>
+        <label class="check"><input id="sc-link-auto" type="checkbox"> Open the link when the scene starts</label>
         <label>Notes (shown while the scene is active)
           <textarea id="sc-notes" rows="2" maxlength="500"></textarea></label>
       </fieldset>
@@ -325,6 +370,7 @@
   <script src="js/youtube-panel.js"></script>
   <script src="js/embed-panel.js"></script>
   <script src="js/sounds-panel.js"></script>
+  <script src="js/links.js"></script>
   <script src="js/settings.js"></script>
   <script src="js/scenes.js"></script>
   <script src="js/app.js"></script>

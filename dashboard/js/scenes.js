@@ -132,7 +132,7 @@ const Scenes = (() => {
     if (!scene) return;
     $("scene-info-text").textContent = scene.notes ? `📝 ${scene.name}: ${scene.notes}` : "";
     $("scene-link").hidden = !scene.link;
-    $("scene-link").onclick = () => window.open(scene.link, "_blank");
+    $("scene-link").onclick = () => Links.open(scene.link);
   }
 
   function setActive(id, busy) {
@@ -176,7 +176,8 @@ const Scenes = (() => {
     const token = ++runToken;
     setActive(scene.id, true);
     const fadeMs = Math.max(0, Number(scene.fadeSeconds ?? 2) * 1000);
-    if (scene.link && scene.linkAuto) window.open(scene.link, "_blank");
+    // Opens in the Website panel or a new Kenku tab; skipped if it's already open.
+    if (scene.link && scene.linkAuto) Links.openForScene(scene.link);
 
     // --- What's playing right now? (ask Kenku fresh, not the 1-second-old copy)
     const pb = await K.api("/v1/playlist/playback").catch(() => null);
@@ -407,6 +408,7 @@ const Scenes = (() => {
     $("sc-yt-stop").checked = scene.youtube?.stopOthers ?? true;
 
     $("sc-link").value = scene.link || "";
+    fillLinkPicker();
     $("sc-link-auto").checked = !!scene.linkAuto;
     $("sc-notes").value = scene.notes || "";
 
@@ -414,6 +416,32 @@ const Scenes = (() => {
     $("sc-left").hidden = isNew;
     $("sc-right").hidden = isNew;
     $("scene-dialog").showModal();
+  }
+
+  // "Pick a saved link" menu above the link box: your saved links + all SoundPads.
+  function fillLinkPicker() {
+    const pick = $("sc-link-pick");
+    pick.innerHTML = "";
+    const add = (parent, text, value) => {
+      const o = document.createElement("option");
+      o.textContent = text;
+      o.value = value;
+      parent.appendChild(o);
+    };
+    add(pick, "— Pick a saved link or SoundPad, or type an address below —", "");
+    const groups = [
+      ["Your links", Links.list().map((l) => [l.name, l.url])],
+      ["Tabletop Audio SoundPads", Links.soundpads().map((p) => [p.name, p.url])],
+    ];
+    for (const [label, items] of groups) {
+      if (!items.length) continue;
+      const g = document.createElement("optgroup");
+      g.label = label;
+      items.forEach(([text, url]) => add(g, text, url));
+      pick.appendChild(g);
+    }
+    const current = $("sc-link").value.trim();
+    pick.value = [...pick.querySelectorAll("option")].some((o) => o.value === current) ? current : "";
   }
 
   function soundCheckbox(id, text, checked) {
@@ -555,6 +583,10 @@ const Scenes = (() => {
       $("sc-youtube").innerHTML = "";
       now.forEach(addYouTubeRow);
     });
+    $("sc-link-pick").addEventListener("change", (e) => {
+      if (e.target.value) $("sc-link").value = e.target.value;
+    });
+    $("sc-link").addEventListener("input", fillLinkPicker);
     $("sc-music-volume").addEventListener("input", (e) => {
       $("sc-music-volume-value").textContent = e.target.value + "%";
     });

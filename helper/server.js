@@ -12,6 +12,7 @@
 //   /api/settings → read / save settings (the dashboard's Settings pane)
 //   /api/scenes   → read / save your scenes (stored in data/scenes.json)
 //   /api/sounds/* → Freesound search + download to your downloads folder (helper/sounds.js)
+//   /api/links    → your saved links + the Tabletop Audio SoundPad list (helper/links.js)
 
 const path = require("path");
 const express = require("express");
@@ -355,6 +356,11 @@ app.use("/api/scenes", require("./scenes")(jsonOnly));
 // ---------------------------------------------------------------------------
 const soundsRouter = require("./sounds")(jsonOnly);
 app.use("/api/sounds", soundsRouter);
+
+// ---------------------------------------------------------------------------
+// 10. Saved links + Tabletop Audio SoundPad list (see helper/links.js)
+// ---------------------------------------------------------------------------
+app.use("/api/links", require("./links")(jsonOnly));
 
 // ---------------------------------------------------------------------------
 // Start

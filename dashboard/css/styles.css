@@ -278,3 +278,30 @@ select {
 }
 .panel .hint { color: var(--muted); font-size: .88rem; margin: 0; }
 .panel .hint button { margin: 2px 0; }
+
+/* ---------- Saved links + SoundPad browser (Website panel) ---------- */
+.link-bar { display: flex; gap: 8px; align-items: flex-start; flex-wrap: wrap; }
+.link-list { display: flex; gap: 6px; flex-wrap: wrap; flex: 1; min-width: 160px; }
+.link-list .link-btn { min-height: 40px; }
+.link-list.editing .link-btn { outline: 2px dashed var(--muted); outline-offset: -4px; }
+.link-tools { display: flex; gap: 6px; flex-wrap: wrap; }
+.link-tools button { min-height: 40px; }
+
+.soundpad-browser { background: #0d0f12; border-radius: var(--radius); padding: 8px; display: flex; flex-direction: column; gap: 8px; }
+.soundpad-browser[hidden] { display: none; }
+.soundpad-head { display: flex; gap: 8px; }
+.soundpad-head input {
+  flex: 1; min-width: 0; min-height: 44px; font: inherit; color: var(--text);
+  background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 0 12px;
+}
+.soundpad-browser .tabs button { min-height: 36px; }
+.soundpad-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; max-height: 55vh; overflow: auto; }
+.soundpad-card { background: var(--panel); border-radius: 8px; padding: 6px; display: flex; flex-direction: column; gap: 4px; }
+.soundpad-card img { width: 100%; aspect-ratio: 3 / 2; object-fit: cover; border-radius: 6px; background: var(--panel-2); }
+.soundpad-name { font-weight: 700; overflow-wrap: anywhere; }
+.soundpad-new { font-size: .7rem; font-weight: 700; text-transform: uppercase; color: var(--accent-text); background: var(--accent); border-radius: 4px; padding: 0 4px; vertical-align: middle; }
+.soundpad-info { color: var(--muted); font-size: .85rem; }
+.soundpad-info:empty { display: none; }
+.soundpad-actions { display: flex; gap: 4px; flex-wrap: wrap; margin-top: auto; }
+.soundpad-actions button { flex: 1; min-height: 38px; }
+.dialog label > select + input { margin-top: 4px; }

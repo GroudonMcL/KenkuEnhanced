@@ -95,5 +95,13 @@ const Layout = (() => {
     render();
   }
 
-  return { init };
+  // Make sure a panel is showing (e.g. before loading a website into it).
+  function show(key) {
+    if (state.visible[key] !== false) return;
+    state.visible[key] = true;
+    save();
+    render();
+  }
+
+  return { init, show };
 })();
