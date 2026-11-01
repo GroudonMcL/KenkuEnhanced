@@ -70,17 +70,43 @@
     <!-- Panel B: YouTube -->
     <section class="panel" id="panel-youtube" data-panel="youtube">
       <h2>YouTube</h2>
-      <form id="yt-form" class="url-row">
-        <input id="yt-url" type="text" placeholder="YouTube video/playlist URL or ID" autocomplete="off">
-        <button type="submit" class="mid primary">Load</button>
+      <!-- Search (results appear underneath; pick which player to send each one to) -->
+      <form id="yt-search-form" class="url-row">
+        <input id="yt-search" type="search" placeholder="Search YouTube (e.g. tavern ambience)" autocomplete="off">
+        <select id="yt-search-type" aria-label="Search for">
+          <option value="video">Videos</option>
+          <option value="playlist">Playlists</option>
+        </select>
+        <button type="submit" class="mid primary">Search</button>
       </form>
-      <div id="yt-message" class="notice" hidden></div>
-      <div class="yt-frame"><div id="yt-player"></div></div>
-      <div class="volume-row">
-        <span class="label">YT volume</span>
-        <input id="yt-volume" type="range" min="0" max="100" step="1" value="60" aria-label="YouTube volume">
-        <span id="yt-volume-value" class="volume-value">60%</span>
-      </div>
+      <div id="yt-search-message" class="notice" hidden></div>
+      <div id="yt-results" class="yt-results" hidden></div>
+
+      <!-- One card per player; youtube-panel.js builds them from the template below -->
+      <div id="yt-decks" class="yt-decks"></div>
+      <button id="yt-add" type="button" class="mid">＋ Add another player</button>
+
+      <template id="yt-deck-template">
+        <div class="yt-deck">
+          <div class="yt-deck-head">
+            <span class="yt-deck-name"></span>
+            <span class="yt-deck-title"></span>
+            <button type="button" class="small yt-remove" title="Remove this player">✕</button>
+          </div>
+          <form class="url-row yt-form">
+            <input class="yt-url" type="text" placeholder="YouTube link or ID" autocomplete="off">
+            <button type="submit" class="mid primary">Load</button>
+          </form>
+          <div class="notice yt-message" hidden></div>
+          <div class="yt-frame"><div class="yt-player"></div></div>
+          <div class="volume-row">
+            <button type="button" class="mid yt-playpause" title="Play / pause">▶</button>
+            <button type="button" class="mid yt-loop" title="Loop">🔁 Loop</button>
+            <input class="yt-volume" type="range" min="0" max="100" step="1" aria-label="Volume">
+            <span class="volume-value yt-volume-value"></span>
+          </div>
+        </div>
+      </template>
     </section>
 
     <!-- Panel C: embed any website -->

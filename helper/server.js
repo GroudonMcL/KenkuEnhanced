@@ -8,6 +8,7 @@
 //   /health      → reports whether the helper and Kenku Remote are reachable
 //   /api/version → this app's version + latest version on GitHub (update check)
 //   /api/frame-check?url=... → does a website allow itself to be shown in an iframe?
+//   /api/youtube/search?q=...//   /api/frame-check?url=... → does a website allow itself to be shown in an iframe?type=video → YouTube search (needs apiKeys.youtube)
 
 const path = require("path");
 const express = require("express");
@@ -183,6 +184,58 @@ app.get("/api/frame-check", async (req, res) => {
     res.json({ url: r.url, status: r.status, allowed, reason, xFrameOptions: xfo || null, frameAncestors: fa || null });
   } catch (err) {
     res.json({ url: url.href, allowed: null, reason: `Couldn't reach the site (${err.cause?.code || err.name}).` });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// 6. YouTube search (YouTube Data API v3)
+// ---------------------------------------------------------------------------
+// The API key stays here in the helper – the browser never sees it.
+// Each search costs 100 of your 10,000 free daily "quota units" (≈100 searches/day),
+// so identical searches are cached for 30 minutes.
+const searchCache = new Map(); // "type|query" -> { at, results }
+
+app.get("/api/youtube/search", async (req, res) => {
+  const key = config.apiKeys.youtube;
+  if (!key) {
+    return res.status(400).json({
+      error: "No YouTube API key yet. Add one to config.json under apiKeys.youtube and restart the helper (see README → YouTube search).",
+    });
+  }
+  const q = String(req.query.q || "").trim();
+  const type = req.query.type === "playlist" ? "playlist" : "video";
+  if (!q) return res.status(400).json({ error: "Type something to search for." });
+
+  const cacheKey = `${type}|${q.toLowerCase()}`;
+  const cached = searchCache.get(cacheKey);
+  if (cached && Date.now() - cached.at < 30 * 60 * 1000) return res.json({ results: cached.results, cached: true });
+
+  const params = new URLSearchParams({ part: "snippet", maxResults: "15", q, type, key, safeSearch: "none" });
+  // Only show videos that are allowed to play inside other pages
+  if (type === "video") params.set("videoEmbeddable", "true");
+
+  try {
+    const r = await fetch("https://www.googleapis.com/youtube/v3/search?" + params, { signal: AbortSignal.timeout(8000) });
+    const data = await r.json();
+    if (!r.ok) {
+      const reason = data.error?.errors?.[0]?.reason || "";
+      const msg = reason === "quotaExceeded"
+        ? "Today's free YouTube search quota is used up. It resets at midnight Pacific time."
+        : `YouTube said: ${data.error?.message || r.status}`;
+      return res.status(502).json({ error: msg });
+    }
+    // Keep only what the dashboard needs
+    const results = (data.items || []).map((it) => ({
+      videoId: it.id.videoId || null,
+      listId: it.id.playlistId || null,
+      title: it.snippet.title,
+      channel: it.snippet.channelTitle,
+      thumbnail: it.snippet.thumbnails?.medium?.url || it.snippet.thumbnails?.default?.url,
+    }));
+    searchCache.set(cacheKey, { at: Date.now(), results });
+    res.json({ results });
+  } catch (err) {
+    res.status(502).json({ error: `Couldn't reach YouTube (${err.cause?.code || err.name}).` });
   }
 });
 

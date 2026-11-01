@@ -147,8 +147,31 @@ button.small { padding: 4px 10px; font-size: .85rem; }
 .presets { display: flex; gap: 6px; flex-wrap: wrap; }
 
 .yt-frame { position: relative; width: 100%; aspect-ratio: 16 / 9; background: #000; border-radius: var(--radius); overflow: hidden; }
-.yt-frame iframe, .yt-frame #yt-player { position: absolute; inset: 0; width: 100%; height: 100%; }
+.yt-frame iframe, .yt-frame .yt-player { position: absolute; inset: 0; width: 100%; height: 100%; }
 
 .embed-frame { flex: 1; min-height: 300px; background: #fff; border-radius: var(--radius); overflow: hidden; }
 .embed-frame iframe { width: 100%; height: 100%; border: 0; display: block; }
 .embed-frame[hidden] { display: none; }
+
+/* ---------- YouTube: multiple players + search ---------- */
+select {
+  font: inherit; color: var(--text); background: var(--panel-2);
+  border: 1px solid var(--border); border-radius: var(--radius); min-height: 52px; padding: 0 10px;
+}
+.yt-decks { display: flex; flex-direction: column; gap: 12px; }
+.yt-deck { background: var(--panel-2); border-radius: var(--radius); padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+.yt-deck-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.yt-deck-name { font-weight: 700; color: var(--accent); white-space: nowrap; }
+.yt-deck-title { flex: 1; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.yt-results { display: flex; flex-direction: column; gap: 6px; max-height: 50vh; overflow: auto;
+  background: #0d0f12; border-radius: var(--radius); padding: 8px; }
+.yt-results[hidden] { display: none; }
+.yt-results-close { align-self: flex-end; }
+.yt-result { display: flex; gap: 10px; align-items: flex-start; padding: 6px; border-radius: 8px; background: var(--panel); }
+.yt-result img { width: 128px; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 6px; flex: none; background: #000; }
+.yt-result-info { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.yt-result-title { font-weight: 600; overflow-wrap: anywhere; }
+.yt-result-channel { color: var(--muted); font-size: .9rem; }
+.yt-result-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.yt-result-actions button { min-height: 40px; }

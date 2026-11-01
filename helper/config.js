@@ -13,7 +13,7 @@ const defaults = {
   port: 4000,
   kenku: { host: "127.0.0.1", port: 3333 },
   downloadsFolder: path.join(ROOT, "downloads"),
-  apiKeys: { freesound: "", pixabay: "" },
+  apiKeys: { youtube: "", freesound: "", pixabay: "" },
 };
 
 function loadConfig() {

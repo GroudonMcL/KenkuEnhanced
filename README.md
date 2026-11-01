@@ -5,7 +5,8 @@ A dashboard for [Kenku FM](https://github.com/owlbear-rodeo/kenku-fm) that you o
 
 - **Kenku control**: your playlists and soundboards as big buttons, play/pause/stop/next,
   volume, and what's playing now.
-- **YouTube player**: paste a video or playlist link.
+- **YouTube players**: as many as you like, each with its own volume and loop, so you can layer
+  ambience under music. Paste a link, or **search YouTube** right in the dashboard.
 - **Website panel**: embed any site that allows it (with a clear message when it doesn't).
 
 You can drag the panels to resize them and show or hide each one. The dashboard remembers
@@ -88,10 +89,33 @@ then restart the helper.
 | `port` | Dashboard port (default 4000) |
 | `kenku.host` / `kenku.port` | Must match Kenku → Settings → Remote |
 | `downloadsFolder` | (later) where downloaded sounds are saved; point a Kenku playlist here |
-| `apiKeys` | (later) Freesound / Pixabay keys |
+| `apiKeys.youtube` | YouTube search key (see below) |
+| `apiKeys.freesound`, `apiKeys.pixabay` | (later) sound search keys |
 | `host` | Optional. `"0.0.0.0"` lets other devices on your network (e.g. a tablet) use the dashboard. Off by default for safety |
 
 `config.json` is never uploaded to GitHub (it's in `.gitignore`), so your keys stay private.
+
+## YouTube search (optional, free)
+Pasting links works without any setup. To **search** inside the dashboard you need a free
+YouTube Data API key. Google has no other official way to search YouTube.
+
+1. Go to <https://console.cloud.google.com/> and sign in with a Google account.
+2. At the top, click the project picker → **New project** → name it `KenkuEnhanced` → **Create**.
+3. Open <https://console.cloud.google.com/apis/library/youtube.googleapis.com>, make sure your
+   new project is selected, and click **Enable**.
+4. Go to **APIs & Services → Credentials → Create credentials → API key**. Copy the key.
+5. Recommended: click the key → under **API restrictions** choose **Restrict key** →
+   tick **YouTube Data API v3** → **Save**.
+6. Open `config.json` in Notepad and paste it in:
+   ```json
+   "apiKeys": { "youtube": "PASTE-YOUR-KEY-HERE", "freesound": "", "pixabay": "" }
+   ```
+7. Close the helper window and start it again.
+
+The key stays in `config.json` on your PC. The browser never sees it, and it's never uploaded.
+The free allowance is about **100 searches a day** (it resets at midnight US Pacific time). The
+same search repeated within 30 minutes is free, because the helper remembers the results.
+Search only shows videos that allow embedding.
 
 ## Updating
 When a new version is released, an **"Update available"** badge appears at the top of the
@@ -111,6 +135,8 @@ A proper installer with one-click updates is planned (see `docs/PLAN.md`).
 | `Port 4000 is already in use` | The helper is already running in another window, or change `port` in `config.json` |
 | A website shows "can't be shown inside the dashboard" | That site forbids embedding. Use **↗ New tab**, which opens it as a Kenku tab so its audio still reaches Discord |
 | YouTube says "doesn't allow it to be embedded" | The uploader disabled embedding. Use the **Open on YouTube in a new tab** button |
+| Search says "No YouTube API key yet" | Follow **YouTube search** above, then restart the helper |
+| Search says the quota is used up | Wait until the next day, or paste links directly (that never uses quota) |
 
 ## Project layout
 ```
