@@ -165,7 +165,8 @@ const YouTubePanel = (() => {
     function onStateChange(e) {
       // 1 = playing, 2 = paused, 0 = ended
       q(".yt-playpause").textContent = e.data === YT.PlayerState.PLAYING ? "⏸" : "▶";
-      if (e.data === YT.PlayerState.PLAYING) {
+      // Show the title once it's playing, or loaded and waiting for ▶
+      if (e.data === YT.PlayerState.PLAYING || e.data === YT.PlayerState.CUED) {
         const title = deck.player.getVideoData?.().title;
         if (title) q(".yt-deck-title").textContent = title;
       }
@@ -201,7 +202,7 @@ const YouTubePanel = (() => {
     // --- Controls ---
     q(".yt-form").addEventListener("submit", (e) => {
       e.preventDefault(); // stop the form reloading the page
-      deck.loadUrl(q(".yt-url").value, true);
+      deck.loadUrl(q(".yt-url").value, false); // ready to play, but wait for ▶
     });
 
     q(".yt-playpause").addEventListener("click", () => {
@@ -359,14 +360,15 @@ const YouTubePanel = (() => {
       decks.forEach((d) => {
         const b = document.createElement("button");
         b.className = "small";
-        b.textContent = `▶ ${d.displayName()}`;
-        b.onclick = () => d.loadUrl(url, true);
+        b.textContent = `→ ${d.displayName()}`;
+        b.title = `Load into ${d.displayName()} (press ▶ there to play)`;
+        b.onclick = () => d.loadUrl(url, false);
         actions.appendChild(b);
       });
       const add = document.createElement("button");
       add.className = "small primary";
       add.textContent = "＋ New player";
-      add.onclick = () => addDeck({ url, volume: 60, loop: false }, { autoplay: true });
+      add.onclick = () => addDeck({ url, volume: 60, loop: false }, { autoplay: false });
       actions.appendChild(add);
 
       info.append(title, channel, actions);
