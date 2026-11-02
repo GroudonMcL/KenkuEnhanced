@@ -28,6 +28,7 @@ const Settings = (() => {
       : "This folder doesn't exist yet.";
     $("set-port").value = s.port;
     $("set-lan").checked = s.lanAccess;
+    $("set-tta-proxy").checked = !!s.experimental?.ttaProxy;
 
     document.querySelectorAll(".key-row").forEach((row) => {
       const info = s.apiKeys[row.dataset.key] || { set: false };
@@ -63,6 +64,7 @@ const Settings = (() => {
       createFolder: $("set-create-folder").checked,
       port: Number($("set-port").value),
       lanAccess: $("set-lan").checked,
+      experimental: { ttaProxy: $("set-tta-proxy").checked },
       apiKeys: {},
     };
     document.querySelectorAll(".key-row").forEach((row) => {
@@ -83,7 +85,7 @@ const Settings = (() => {
       if (!r.ok) throw new Error(data.error || "Save failed");
       fill(data);
       if (!data.restartNeeded) message("✓ Saved.", "ok");
-      window.dispatchEvent(new Event("settings-saved")); // e.g. refresh Kenku status
+      window.dispatchEvent(new CustomEvent("settings-saved", { detail: data })); // e.g. refresh Kenku status
     } catch (err) {
       message(err.message, "error");
     } finally {

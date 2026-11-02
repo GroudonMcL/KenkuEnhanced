@@ -183,6 +183,18 @@ The **Website** panel keeps your favourite sites as buttons.
 other pages, so it can't sit in the Website panel. A new Kenku tab is just as good, because Kenku
 sends the sound of every tab to Discord. Switch back to the dashboard tab to keep using it.
 
+**🧪 Experimental: SoundPads inside the Website panel.** In **⚙ Settings → Experimental**, tick
+**Show Tabletop Audio inside the Website panel** and click **Save** (no restart needed). The helper
+then passes Tabletop Audio pages *and their sounds* through this PC (on the dashboard's port + 1,
+e.g. `http://localhost:4001`) and leaves out the "don't embed me" header, so SoundPads load right
+in the panel and the **🎲 SoundPads → ▶ Open** buttons open there too. Please keep in mind:
+- It works around a choice Tabletop Audio made on purpose (no embedding, and their sound server
+  only serves their own site). Use it for your own table only and don't share the address.
+- It can stop working whenever they change their site. Untick it to go back to new tabs.
+- Nothing is downloaded or stored: every sound still comes live from Tabletop Audio.
+
+![A SoundPad playing in the Website panel](docs/screenshots/tta-passthrough-2-playing.png)
+
 **Your own Custom SoundPad:** open **Custom SoundPad**, build your mix, click **Get Link** on
 Tabletop Audio, then paste that link into the address box here and click **☆ Save** (or paste it
 straight into a scene's Link box).

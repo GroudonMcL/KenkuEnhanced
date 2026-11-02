@@ -9,6 +9,10 @@
 //
 // We also remember which sites refused, so next time (e.g. from a scene or a saved
 // link) they can go straight to a new tab. Saved links themselves live in links.js.
+//
+// EXPERIMENTAL: when "Show Tabletop Audio inside the Website panel" is ticked in
+// Settings, tabletopaudio.com addresses are loaded through the helper's
+// pass-through (helper/tta-proxy.js, on the dashboard's port + 1) instead.
 
 const EmbedPanel = (() => {
   const $ = (id) => document.getElementById(id);
@@ -19,7 +23,25 @@ const EmbedPanel = (() => {
   const hostOf = (url) => {
     try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return ""; }
   };
+  // Pass-through for Tabletop Audio: null when off, else its port.
+  let ttaPort = null;
+  const isTta = (url) => /(^|\.)tabletopaudio\.com$/.test(hostOf(url)) && !hostOf(url).startsWith("sounds.");
+  function viaPassThrough(url) {
+    if (!ttaPort || !isTta(url)) return null;
+    const u = new URL(url);
+    return `${location.protocol}//${location.hostname}:${ttaPort}${u.pathname}${u.search}${u.hash}`;
+  }
+  function setTtaPassThrough(settings) {
+    const port = settings?.experimental?.ttaProxy ? settings.experimental.ttaProxyPort : null;
+    if (port === ttaPort) return;
+    ttaPort = port;
+    window.dispatchEvent(new Event("embed-mode-changed")); // links.js re-draws its ↗ marks
+    const shown = Store.get("embed.url", "");
+    if (isTta(shown) && (ttaPort || currentUrl)) load(shown); // switch the open page over
+  }
+
   function isBlocked(url) {
+    if (viaPassThrough(url)) return false;
     const host = hostOf(url);
     return Object.keys(blocked).some((h) => host === h || host.endsWith("." + h));
   }
@@ -61,6 +83,15 @@ const EmbedPanel = (() => {
 
     const frame = $("embed-iframe");
     const wrap = frame.parentElement;
+
+    const passUrl = viaPassThrough(url);
+    if (passUrl) {
+      wrap.hidden = false;
+      message("🧪 Shown through the experimental Tabletop Audio pass-through (⚙ Settings → Experimental).", "warn");
+      frame.src = passUrl;
+      return;
+    }
+
     message("Checking whether this site allows embedding…", "warn");
 
     let check = { allowed: null };
@@ -104,9 +135,18 @@ const EmbedPanel = (() => {
     });
     $("embed-newtab").addEventListener("click", () => openNewTab(normalise($("embed-url").value)));
 
+    window.addEventListener("settings-saved", (e) => setTtaPassThrough(e.detail));
+    // Find out whether the pass-through is on before loading the last page.
     const saved = Store.get("embed.url", "");
-    if (saved) load(saved);
+    fetch("/api/settings")
+      .then((r) => r.json())
+      .then((s) => (ttaPort = s.experimental?.ttaProxy ? s.experimental.ttaProxyPort : null))
+      .catch(() => {})
+      .finally(() => {
+        window.dispatchEvent(new Event("embed-mode-changed"));
+        if (saved) load(saved);
+      });
   }
 
-  return { init, load, openNewTab, isBlocked, normalise, current: () => currentUrl };
+  return { init, load, openNewTab, isBlocked, normalise, current: () => currentUrl, passThroughOn: () => !!ttaPort };
 })();

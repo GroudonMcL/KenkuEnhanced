@@ -295,9 +295,10 @@ const Links = (() => {
       const go = document.createElement("button");
       go.type = "button";
       go.className = "small primary";
-      go.textContent = "↗ Open";
-      go.title = "Open in a new Kenku tab";
-      go.onclick = () => open(p.url, "tab");
+      const inPanel = whereFor(p.url) === "panel"; // only with the experimental pass-through
+      go.textContent = inPanel ? "▶ Open" : "↗ Open";
+      go.title = inPanel ? "Open in the Website panel" : "Open in a new Kenku tab";
+      go.onclick = () => open(p.url);
       const saved = !!findByUrl(p.url);
       const star = document.createElement("button");
       star.type = "button";
@@ -339,6 +340,11 @@ const Links = (() => {
     $("soundpad-filter").addEventListener("input", () => soundpads && renderSoundpads());
     // Loading something by hand changes which link is highlighted
     $("embed-form").addEventListener("submit", () => setTimeout(render, 0));
+
+    window.addEventListener("embed-mode-changed", () => {
+      render();
+      if (soundpads) renderSoundpads();
+    });
 
     if (Store.get("links.browserOpen", false)) toggleBrowser(true);
     else loadSoundpads(); // quietly, so the scene editor can offer SoundPads (the helper caches it for a day)

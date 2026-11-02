@@ -17,6 +17,8 @@ const defaults = {
   kenku: { host: "127.0.0.1", port: 3333 },
   downloadsFolder: path.join(ROOT, "downloads"),
   apiKeys: { youtube: "", freesound: "", pixabay: "" },
+  // Off-by-default experiments (⚙ Settings → Experimental)
+  experimental: { ttaProxy: false },
 };
 
 let loadError = null; // set if config.json exists but couldn't be read
@@ -45,6 +47,7 @@ function loadConfig() {
     ...user,
     kenku: { ...defaults.kenku, ...(user.kenku || {}) },
     apiKeys: { ...defaults.apiKeys, ...(user.apiKeys || {}) },
+    experimental: { ...defaults.experimental, ...(user.experimental || {}) },
   };
 }
 
@@ -65,6 +68,7 @@ function saveConfig(changes) {
     kenku: { ...config.kenku, ...(changes.kenku || {}) },
     downloadsFolder: changes.downloadsFolder ?? config.downloadsFolder,
     apiKeys: { ...config.apiKeys, ...(changes.apiKeys || {}) },
+    experimental: { ...config.experimental, ...(changes.experimental || {}) },
   };
   if (!next.host) delete next.host; // keep the file tidy when not used
 

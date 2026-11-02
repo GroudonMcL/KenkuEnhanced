@@ -83,6 +83,15 @@ API keys live (they never reach the browser) and where files get written to disk
   page is read.
 - Ideas for later: several links per scene, a "close the old SoundPad tab" helper if a Kenku
   fork ever exposes tab control.
+- **Experimental pass-through (off by default):** `helper/tta-proxy.js` serves
+  tabletopaudio.com on port+1 without `X-Frame-Options`/CSP, and `/_sounds/*` →
+  sounds.tabletopaudio.com with `Origin: https://tabletopaudio.com` (that server answers 403
+  to any other origin, and CreateJS loads sounds via XHR/Web Audio, so it needs CORS). Page,
+  JS and CSS text is rewritten so sound URLs point at `/_sounds/`. Own port = own origin, so
+  third-party scripts in the page can't call the dashboard's `/api`. Only those two hosts,
+  GET/HEAD only, streamed with Range support, nothing cached to disk. Tested: Vikings
+  SoundPad loads all 40 sounds and plays (Web Audio output measured). Not yet tested in
+  Kenku itself; fragile if Tabletop Audio changes their site.
 
 ### Phase 5 – Image → vibe (built)
 - **Step 1, tags:** scenes have `tags: [...]` (scene editor → Tags). The ✨ Vibe dialog takes

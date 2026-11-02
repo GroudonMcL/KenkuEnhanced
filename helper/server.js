@@ -15,6 +15,7 @@
 //   /api/sounds/* → Freesound search + download to your downloads folder (helper/sounds.js)
 //   /api/links    → your saved links + the Tabletop Audio SoundPad list (helper/links.js)
 //   /models/*, /api/vibe/* → picture model files + picture fetcher for ✨ Vibe (helper/vibe.js)
+//   port+1       → EXPERIMENTAL Tabletop Audio pass-through, off by default (helper/tta-proxy.js)
 
 const path = require("path");
 const express = require("express");
@@ -219,6 +220,15 @@ const jsonOnly = [
 const HOST = config.host || "127.0.0.1";
 const RUNNING = { port: config.port, host: HOST };
 
+// Experimental Tabletop Audio pass-through: its own port (see helper/tta-proxy.js)
+const ttaProxy = require("./tta-proxy");
+const TTA_PORT = config.port + 1;
+function startTtaProxyIfOn() {
+  if (config.experimental.ttaProxy) {
+    ttaProxy.start({ port: TTA_PORT, host: HOST, isEnabled: () => config.experimental.ttaProxy });
+  }
+}
+
 // "AIzaSy...2fbQ" → "…2fbQ". The full key is never sent to the browser.
 function keyHint(key) {
   return key ? { set: true, hint: "…" + key.slice(-4) } : { set: false, hint: "" };
@@ -233,6 +243,7 @@ function settingsForBrowser() {
     downloadsFolder: config.downloadsFolder,
     downloadsFolderExists: fs.existsSync(config.downloadsFolder),
     apiKeys: Object.fromEntries(Object.entries(config.apiKeys).map(([k, v]) => [k, keyHint(v)])),
+    experimental: { ...config.experimental, ttaProxyPort: TTA_PORT },
     configError: config.loadError,
     // true when saved settings differ from what's running → restart the helper
     restartNeeded: config.port !== RUNNING.port || (config.host || "127.0.0.1") !== RUNNING.host,
@@ -281,12 +292,17 @@ app.put("/api/settings", jsonOnly, (req, res) => {
     }
   }
 
+  if (b.experimental && typeof b.experimental.ttaProxy === "boolean") {
+    changes.experimental = { ttaProxy: b.experimental.ttaProxy };
+  }
+
   if (errors.length) return res.status(400).json({ error: errors.join(" ") });
   try {
     config.save(changes);
   } catch (err) {
     return res.status(500).json({ error: `Couldn't save config.json: ${err.message}` });
   }
+  startTtaProxyIfOn();
   if (changes.apiKeys?.youtube !== undefined) searchCache.clear();
   if (changes.apiKeys?.freesound !== undefined) soundsRouter.clearCache();
   res.json(settingsForBrowser());
@@ -346,6 +362,7 @@ app.listen(config.port, HOST, () => {
   console.log("  KenkuEnhanced helper is running.");
   console.log(`  Dashboard:  http://localhost:${config.port}`);
   console.log(`  Kenku API:  ${config.kenkuUrl}  (proxied at /kenku)`);
+  startTtaProxyIfOn();
   console.log("  Leave this window open while you play. Close it (or Ctrl+C) to stop.");
   console.log("");
 }).on("error", (err) => {
