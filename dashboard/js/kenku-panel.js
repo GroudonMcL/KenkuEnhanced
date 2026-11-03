@@ -515,11 +515,11 @@ const KenkuPanel = (() => {
   function init() {
     // Heights are in 20px rows.
     // key: tiles with the same key in two scenes are kept (not rebuilt) when switching.
-    Board.register("nowplaying", { badge: "Kenku", badgeClass: "k", fitContent: true, size: { w: 7, h: 4, minW: 3, minH: 3 },
+    Board.register("nowplaying", { badge: "Kenku", badgeClass: "k", icon: "bars", fitContent: true, size: { w: 7, h: 4, minW: 3, minH: 3 },
       key: () => "", create: createNowPlaying });
-    Board.register("playlist", { badge: "Playlist", badgeClass: "k", autoable: true, size: { w: 3, h: 14, minW: 2, minH: 5 },
+    Board.register("playlist", { badge: "Playlist", badgeClass: "k", icon: "music", autoable: true, size: { w: 3, h: 14, minW: 2, minH: 5 },
       key: (c) => c.id || "", create: createPlaylist });
-    Board.register("soundboard", { badge: "Soundboard", badgeClass: "k", size: { w: 4, h: 10, minW: 2, minH: 5 },
+    Board.register("soundboard", { badge: "Soundboard", badgeClass: "k", icon: "pads", size: { w: 4, h: 10, minW: 2, minH: 5 },
       key: (c) => c.id || "", create: createSoundboard });
 
     $("add-kenku").addEventListener("click", openAddDialog);

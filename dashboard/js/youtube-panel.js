@@ -232,6 +232,23 @@ const YouTubePanel = (() => {
       if (deck.ready) deck.player.setLoop(deck.saved.loop);
       save();
     };
+    // Where it is now ({ time, index } – index for playlists), so a scene can pick
+    // it up again later, and resume(position) to start playing from there.
+    deck.position = () => {
+      if (!deck.ready || !deck.target) return null;
+      const p = deck.player;
+      const pos = { time: Math.floor(p.getCurrentTime?.() || 0) };
+      if (deck.target.listId) pos.index = Math.max(0, p.getPlaylistIndex?.() ?? 0);
+      return pos;
+    };
+    deck.resume = (pos) => {
+      if (!deck.ready || !deck.target) return;
+      const p = deck.player;
+      const startSeconds = Math.max(0, pos?.time || 0);
+      message(null);
+      if (deck.target.listId) p.loadPlaylist({ listType: "playlist", list: deck.target.listId, index: pos?.index || 0, startSeconds });
+      else p.loadVideoById({ videoId: deck.target.videoId, startSeconds });
+    };
     deck.displayName = () => tile.title();
     // Resolves once the YouTube player exists (scenes wait for this before fading in).
     deck.whenReady = () => (deck.ready ? Promise.resolve() : new Promise((r) => deck.readyWaiters.push(r)));
@@ -372,7 +389,10 @@ const YouTubePanel = (() => {
     Board.register("youtube", {
       badge: "YouTube",
       badgeClass: "y",
+      icon: "video",
       autoable: true,
+      collapsedRows: 4, // collapsed: the title bar plus the ▶ / loop / volume row
+      keepSize: true,   // a scene switch that keeps this video keeps its size too
       // the same video/playlist in two scenes = the same tile (keeps playing)
       key: (c) => {
         const t = parse(c.url || "");

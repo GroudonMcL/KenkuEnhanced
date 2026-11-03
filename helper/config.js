@@ -17,7 +17,8 @@ const defaults = {
   kenku: { host: "127.0.0.1", port: 3333 },
   downloadsFolder: path.join(ROOT, "downloads"),
   apiKeys: { youtube: "", freesound: "", pixabay: "" },
-  // Off-by-default experiments (⚙ Settings → Experimental)
+  // Experiments (⚙ Settings → Experimental). Tabletop Audio is on unless switched off
+  // (see migrateExperimental below); the others are off by default.
   // passThrough: { tta: true, mynoise: false, … } – which sites the helper passes through
   // mobile:      { mynoise: true, … }               – ask those sites for their mobile version
   experimental: { passThrough: {}, mobile: {} },
@@ -57,6 +58,8 @@ function loadConfig() {
 function migrateExperimental(e = {}) {
   const passThrough = { ...(e.passThrough || {}) };
   if (e.ttaProxy && passThrough.tta === undefined) passThrough.tta = true;
+  // Tabletop Audio is shown inside tiles unless you switched it off.
+  if (passThrough.tta === undefined) passThrough.tta = true;
   return { passThrough, mobile: { ...(e.mobile || {}) } };
 }
 

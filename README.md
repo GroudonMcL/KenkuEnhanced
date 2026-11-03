@@ -26,8 +26,10 @@ Everything you change is saved by itself (into the scene that's showing).
 
 ### Arranging tiles
 - **Move** a tile by dragging its title bar. **Resize** it from its edges or the corner mark.
-- **▾** collapses a tile to just its title bar (it keeps playing); **▸** opens it again.
-  **✕** closes it.
+- **▾** collapses a tile to just its title bar (it keeps playing); a collapsed YouTube tile keeps
+  its ▶ / loop / volume row. **▸** opens it again. **✕** closes it.
+- The small mark at the left of the title bar shows what kind of tile it is (hover it for the
+  name): a video for YouTube, a globe for websites, a note for playlists, pads for soundboards.
 - Tiles name themselves after what they show (the video, playlist, soundboard or page).
   **Double-click a name** to give it your own; clear it to go back to the automatic name.
 - The **lock** button (padlock, top right) locks the layout so nothing moves by accident during a
@@ -136,7 +138,11 @@ current scene (the same tiles) or as an empty board. Then arrange its tiles.
   scene has a tile for it, and Kenku sounds whose soundboard is in the new scene;
 - **everything else fades out** (websites can't be faded, so they play until the fade is over);
 - the new scene's **▶ auto** items **fade in**. The music fades to the volume you last set in
-  that scene's *Now playing* tile.
+  that scene's *Now playing* tile;
+- YouTube tiles that were **playing when you last left the new scene** fade back in, from
+  where they were.
+
+A YouTube or Website tile that's in both scenes keeps the size you last gave it.
 
 A small note at the bottom shows what's keeping, fading out and fading in:
 
@@ -238,7 +244,7 @@ dashboard tab to keep using it.
 
 **🧪 Experimental: show those sites inside tiles anyway.** In **⚙ Settings → Experimental**, tick
 the sites you want (**Tabletop Audio**, **myNoise**, **Rainy Mood**, **Ambient-Mixer**) and click
-**Save** (no restart needed). The helper then passes those sites *and their sound servers*
+**Save** (no restart needed). **Tabletop Audio is ticked by default.** The helper then passes those sites *and their sound servers*
 through this PC, each on its own port (dashboard port + 1 to + 4, e.g. `http://localhost:4001`),
 and leaves out the "don't embed me" header, so they load right in a Website tile (the tile says
 **🧪 pass-through**). Please keep in mind:
@@ -251,8 +257,8 @@ and leaves out the "don't embed me" header, so they load right in a Website tile
 - **📱 mobile version** asks a site for its phone layout. Most of these sites look the same either
   way (they already adapt to a narrow tile); Rainy Mood changes a little.
 
-**🔍 Zoom** (in any Website tile's title bar) shows the page smaller – 85, 70 or 55 % – so more
-of it fits in the tile. Each tile remembers its zoom.
+**🔍 Zoom** (in any Website tile's title bar) shows the page at 100, 85, 70 or 55 % – smaller
+means more of it fits in the tile. Tiles start at 55 %, and each tile remembers its zoom.
 
 ![Ambient-Mixer, myNoise and Rainy Mood inside tiles](docs/screenshots/passthrough-sites.png)
 
