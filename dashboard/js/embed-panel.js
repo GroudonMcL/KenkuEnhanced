@@ -94,6 +94,7 @@ const EmbedPanel = (() => {
     const frame = q("iframe");
     let currentUrl = "";
     let shownUrl = config.url || "";
+    let pageTitle = "";
 
     function message(text, kind) {
       const box = q(".web-message");
@@ -129,7 +130,8 @@ const EmbedPanel = (() => {
       }
       clearTimeout(checking);
       if (url !== currentUrl) return; // something else was loaded meanwhile
-      tile.setTitle(nameFor(url, check.title));
+      pageTitle = check.title || "";
+      tile.setTitle(nameFor(url, pageTitle));
 
       const passUrl = viaPassThrough(url);
       if (passUrl) {
@@ -184,6 +186,7 @@ const EmbedPanel = (() => {
     const inst = {
       load,
       url: () => shownUrl,
+      rename: () => shownUrl && tile.setTitle(nameFor(shownUrl, pageTitle)),
       tile,
       save: () => ({ url: shownUrl }),
       destroy: () => {
@@ -227,6 +230,8 @@ const EmbedPanel = (() => {
   function init() {
     Board.register("website", { badge: "Website", badgeClass: "w", size: { w: 5, h: 18, minW: 2, minH: 6 } /* 20px rows */, create: createWebsite });
     window.addEventListener("settings-saved", (e) => setTtaPassThrough(e.detail));
+    // SoundPad / track lists or saved links arrived or changed → better tile names
+    window.addEventListener("link-names-changed", () => instances.forEach((i) => i.rename()));
     // Find out whether the pass-through is on before tiles load their pages.
     ready = fetch("/api/settings")
       .then((r) => r.json())
@@ -240,6 +245,7 @@ const EmbedPanel = (() => {
     load,
     openNewTab,
     isBlocked,
+    viaPassThrough,
     normalise,
     current: () => (lastUsed || instances[0])?.url() || "",
     urls: () => instances.map((i) => i.url()),

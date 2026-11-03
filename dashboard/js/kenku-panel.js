@@ -383,66 +383,95 @@ const KenkuPanel = (() => {
   }
 
   // ===========================================================================
-  // "+ Kenku" picker
+  // "+ Kenku" picker: tick one or more, then "+ Add". Double-click adds one at once.
   // ===========================================================================
   let addTab = Store.get("kenku.addTab", "playlists");
+  const picked = new Map(); // "type:id" → { type, config, name }
 
   function onScreen(type, id) {
     return Board.tiles(type).some((t) => t.config().id === id);
   }
 
   function renderAddDialog() {
-    const words = $("kenku-add-search").value.trim().toLowerCase();
-    const match = (...texts) => !words || texts.some((t) => (t || "").toLowerCase().includes(words));
+    const words = $("kenku-add-search").value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    const match = (...texts) => {
+      const hay = texts.join(" ").toLowerCase();
+      return words.every((w) => hay.includes(w));
+    };
     document.querySelectorAll("#kenku-add-dialog [data-tab]").forEach((b) => b.classList.toggle("on", b.dataset.tab === addTab));
     $("kenku-add-count-playlists").textContent = library.playlists.length;
     $("kenku-add-count-soundboards").textContent = library.soundboards.length;
 
     const box = $("kenku-add-list");
     box.innerHTML = "";
-    const row = (icon, name, sub, mark, onClick) => {
-      const b = el("button", "pick-row");
-      b.type = "button";
-      const i = el("span", "pick-icon", icon);
+    const row = (icon, type, config, name, sub, mark) => {
+      const key = `${type}:${config.id || ""}`;
+      const r = el("label", "pick-row");
+      const box2 = el("input");
+      box2.type = "checkbox";
+      box2.checked = picked.has(key);
+      box2.onchange = () => {
+        box2.checked ? picked.set(key, { type, config, name }) : picked.delete(key);
+        renderFooter();
+      };
       const text = el("span", "pick-text");
       text.append(el("b", "", name), el("small", "", sub));
-      b.append(i, text);
-      if (mark) b.append(el("span", "pick-mark", mark));
-      b.onclick = onClick;
-      box.append(b);
-    };
-    const add = (type, config) => {
-      $("kenku-add-dialog").close();
-      Board.add(type, config);
+      r.append(box2, el("span", "pick-icon", icon), text);
+      if (mark) r.append(el("span", "pick-mark", mark));
+      r.addEventListener("dblclick", (e) => {
+        e.preventDefault();
+        picked.clear();
+        picked.set(key, { type, config, name });
+        addPicked();
+      });
+      box.append(r);
     };
 
     if (!loaded) box.append(el("p", "hint", "Waiting for Kenku… Is Kenku FM open with Remote switched on?"));
 
     if (addTab === "nowplaying") {
-      row("▶", "Now playing", "Play/pause, skip, shuffle, repeat and volume for Kenku's playlist player",
-        Board.tiles("nowplaying").length ? "on screen" : "", () => add("nowplaying", {}));
-      return;
-    }
-    if (addTab === "playlists") {
+      row("▶", "nowplaying", {}, "Now playing", "Play/pause, skip, shuffle, repeat and volume for Kenku's playlist player",
+        Board.tiles("nowplaying").length ? "on screen" : "");
+    } else if (addTab === "playlists") {
       const list = library.playlists.filter((p) => match(p.title, ...p.tracks.map((t) => trackById(t)?.title)));
       for (const p of list) {
         const names = p.tracks.slice(0, 3).map((t) => trackById(t)?.title).filter(Boolean);
-        row("🎵", p.title, `${p.tracks.length} tracks${names.length ? " · " + names.join(", ") : ""}`,
-          onScreen("playlist", p.id) ? "on screen" : "", () => add("playlist", { id: p.id }));
+        row("🎵", "playlist", { id: p.id }, p.title, `${p.tracks.length} tracks${names.length ? " · " + names.join(", ") : ""}`,
+          onScreen("playlist", p.id) ? "on screen" : "");
       }
-      if (loaded && !list.length) box.append(el("p", "hint", words ? "No playlists match." : "Kenku has no playlists yet."));
-      return;
+      if (loaded && !list.length) box.append(el("p", "hint", words.length ? "No playlists match." : "Kenku has no playlists yet."));
+    } else {
+      const list = library.soundboards.filter((b) => match(b.title, ...b.sounds.map((s) => soundById(s)?.title)));
+      for (const b of list) {
+        const names = b.sounds.slice(0, 4).map((s) => soundById(s)?.title).filter(Boolean);
+        row("🎛", "soundboard", { id: b.id }, b.title, `${b.sounds.length} sounds${names.length ? " · " + names.join(", ") : ""}`,
+          onScreen("soundboard", b.id) ? "on screen" : "");
+      }
+      if (loaded && !list.length) box.append(el("p", "hint", words.length ? "No soundboards match." : "Kenku has no soundboards yet."));
     }
-    const list = library.soundboards.filter((b) => match(b.title, ...b.sounds.map((s) => soundById(s)?.title)));
-    for (const b of list) {
-      const names = b.sounds.slice(0, 4).map((s) => soundById(s)?.title).filter(Boolean);
-      row("🎛", b.title, `${b.sounds.length} sounds${names.length ? " · " + names.join(", ") : ""}`,
-        onScreen("soundboard", b.id) ? "on screen" : "", () => add("soundboard", { id: b.id }));
-    }
-    if (loaded && !list.length) box.append(el("p", "hint", words ? "No soundboards match." : "Kenku has no soundboards yet."));
+    renderFooter();
+  }
+
+  function renderFooter() {
+    const items = [...picked.values()];
+    const go = $("kenku-add-go");
+    go.disabled = !items.length;
+    go.textContent = items.length > 1 ? `＋ Add ${items.length} tiles` : items.length ? `＋ Add “${items[0].name}”` : "＋ Add";
+    $("kenku-add-selected").textContent = items.length
+      ? `Selected: ${items.map((i) => i.name).join(", ")}`
+      : "Tick one or more (double-click adds one straight away).";
+  }
+
+  function addPicked() {
+    const items = [...picked.values()];
+    if (!items.length) return;
+    $("kenku-add-dialog").close();
+    for (const i of items) Board.add(i.type, i.config);
+    picked.clear();
   }
 
   function openAddDialog() {
+    picked.clear();
     $("kenku-add-search").value = "";
     renderAddDialog();
     $("kenku-add-dialog").showModal();
@@ -459,6 +488,7 @@ const KenkuPanel = (() => {
 
     $("add-kenku").addEventListener("click", openAddDialog);
     $("kenku-add-close").addEventListener("click", () => $("kenku-add-dialog").close());
+    $("kenku-add-go").addEventListener("click", addPicked);
     $("kenku-add-search").addEventListener("input", renderAddDialog);
     document.querySelectorAll("#kenku-add-dialog [data-tab]").forEach((b) => {
       b.addEventListener("click", () => {

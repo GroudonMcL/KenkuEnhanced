@@ -176,24 +176,39 @@ How it works, and what to expect:
   starting point and fix them by hand.
 - The first picture after starting the dashboard is slower, while the model loads.
 
-## Links and Tabletop Audio
-Click **＋ Website** to add a Website tile: type an address, or pick one of your saved links or
-a Tabletop Audio SoundPad.
+## Adding tiles
+The three **＋** buttons in the top bar open a picker:
 
-- **Save a link:** type or paste an address in the box at the top and click **☆ Save link** (or
-  click **☆** in a Website tile's title bar). Give it a name and choose where it opens:
+- **＋ Kenku**: *Now playing*, your **playlists** or your **soundboards**. Search finds names,
+  track titles and sound names. Tick several (even from different lists) and click
+  **＋ Add 3 tiles**, or double-click one to add just that. "on screen" marks ones you already have.
+- **＋ YouTube**: search (or click one of the **Try:** ideas), then **＋ New tile** on a result.
+  Or paste a link. In a YouTube tile, **🔎** searches again for that player and **🔗** changes the link.
+- **＋ Website**:
+  - **Tabletop Audio**: 🎲 **SoundPads** and 🎵 **Ambience tracks** (all ~530 of them,
+    with pictures, filter by category) and ⭐ **My Custom SoundPads**.
+  - 🌐 **Ambience sites**: myNoise, Ambient-Mixer, Rainy Mood, Syrinscape, TavernTunes, A Soft Murmur.
+  - 🔗 **Saved links**.
+  - **Paste any address** into the search box to add it.
+
+  Click something, then **＋ Add tile** (or double-click it). **↗ Kenku tab** opens it in a new
+  Kenku tab instead, and **☆ Save link** keeps it in your saved links.
+
+![The Website picker](docs/screenshots/dialog-website.png)
+
+## Links and Tabletop Audio
+- **Save a link:** in **＋ Website**, paste an address or pick something and click **☆ Save link**
+  (or click **☆** in a Website tile's title bar). Give it a name and choose where it opens
+  (scenes use this):
   - **Automatic** (normal): in a Website tile if the site allows it, otherwise in a new
     Kenku tab. The dashboard remembers which sites refuse.
   - **A Website tile** or **A new Kenku tab** to force one or the other.
-  Buttons that open a new tab have a **↗** after their name.
-- **Change, reorder or delete links:** click **✎ Edit links**, then click a link.
-- **🎲 SoundPads** shows all of Tabletop Audio's SoundPads with pictures. You can filter them by
-  category or by a word like `tavern`. **↗ Open** opens a SoundPad, and **☆ Save** adds it to
-  your links, so scenes can use it.
+- **Change, reorder or delete links:** click **✎** next to a link in **＋ Website → Saved links**.
 
-**Why SoundPads open in a new tab:** Tabletop Audio doesn't allow its site to be shown inside
-other pages, so it can't sit in a Website tile. A new Kenku tab is just as good, because Kenku
-sends the sound of every tab to Discord. Switch back to the dashboard tab to keep using it.
+**Sites that can't be shown inside a tile** (Tabletop Audio, myNoise, Ambient-Mixer and Rainy
+Mood refuse to be embedded) still get a tile. It shows an **↗ Open in a Kenku tab** button, which is
+just as good for sound, because Kenku sends the sound of every tab to Discord. Switch back to the
+dashboard tab to keep using it.
 
 **🧪 Experimental: SoundPads inside Website tiles.** In **⚙ Settings → Experimental**, tick
 **Show Tabletop Audio inside Website tiles** and click **Save** (no restart needed). The helper
@@ -207,8 +222,9 @@ in a tile, and the **🎲 SoundPads** buttons say **＋ Add tile**. Please keep 
 
 ![A SoundPad playing inside the dashboard](docs/screenshots/tta-passthrough-2-playing.png)
 
-**Your own Custom SoundPad:** open **Custom SoundPad**, build your mix, click **Get Link** on
-Tabletop Audio, then paste that link into the address box here and click **☆ Save** (or paste it
+**Your own Custom SoundPad:** in **＋ Website → My Custom SoundPads**, add *Make a new Custom
+SoundPad*, build your mix, click **Get Link** on Tabletop Audio, then paste that link into the
+**＋ Website** search box and click **☆ Save link** (or paste it
 straight into a scene's Link box).
 
 Good to know:

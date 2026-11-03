@@ -89,7 +89,13 @@ Tested 2026-11-03:
      🔎 Find sounds is already a pop-up.
    - Old scenes still work on top of the tiles until step 3 replaces them.
    - The layout is stored in this browser (`localStorage`), not yet per scene.
-2. Add dialogs (Kenku, YouTube with search, Website with Tabletop Audio browser + presets).
+2. ✅ **Built.** Add dialogs:
+   - Kenku: tick several (across playlists/soundboards), double-click adds one, search names/tracks/sounds.
+   - YouTube: thumbnail grid, "Try:" quick searches, paste a link; 🔎 in a tile searches for that player.
+   - Website: sidebar (SoundPads, 531 ambience tracks via `/api/links/tracks`, Custom SoundPads,
+     ambience sites, saved links), one box to search or paste an address, footer with the tile
+     name, ☆ Save link / ↗ Kenku tab / ＋ Add tile. A track is `https://tabletopaudio.com/?<id>`
+     (their page queues that track); works through the pass-through.
 3. Scenes as layouts: tabs, auto-save, undo, ▶ auto, smart crossfade.
 4. General pass-through for myNoise / Rainy Mood (+ try Ambient-Mixer), mobile UA, launcher tile.
 5. Find sounds + Vibe as dialogs; README/screenshots.

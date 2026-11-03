@@ -378,6 +378,14 @@ const YouTubePanel = (() => {
       Store.set("youtube.searchType", $("yt-search-type").value);
       search($("yt-search").value, $("yt-search-type").value);
     });
+    // One-click example searches (each search uses some of the daily YouTube quota)
+    document.querySelectorAll("[data-yt-q]").forEach((b) => {
+      b.addEventListener("click", () => {
+        $("yt-search").value = b.dataset.ytQ;
+        $("yt-search-type").value = "video";
+        search(b.dataset.ytQ, "video");
+      });
+    });
     $("yt-link-form").addEventListener("submit", (e) => {
       e.preventDefault();
       const text = $("yt-link").value.trim();

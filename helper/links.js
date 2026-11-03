@@ -5,6 +5,7 @@
 //   GET /api/links            → { links: [...] }
 //   PUT /api/links            ← { links: [...] }  (replaces the whole list)
 //   GET /api/links/soundpads  → { soundpads: [...], fetchedAt, stale?, error? }
+//   GET /api/links/tracks     → { tracks: [...], fetchedAt, stale?, error? }  (ambience tracks)
 //
 // A link looks like: { id, name, url, openIn: "auto" | "panel" | "tab" }
 //
@@ -56,13 +57,14 @@ function validate(links) {
 //     <a ... href="vikings_sp.html"> ... <img data-src="https://images...jpg">
 // If they redesign the page this finds nothing, and the dashboard falls back to a
 // plain "open the SoundPad page" link.
+const text = (s) =>
+  String(s || "")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&amp;/g, "&").replace(/&#0?39;|&apos;/g, "'").replace(/&quot;/g, '"').replace(/&nbsp;/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
 function parseSoundpads(html) {
-  const text = (s) =>
-    String(s || "")
-      .replace(/<[^>]*>/g, " ")
-      .replace(/&amp;/g, "&").replace(/&#0?39;|&apos;/g, "'").replace(/&quot;/g, '"').replace(/&nbsp;/g, " ")
-      .replace(/\s+/g, " ")
-      .trim();
   const out = [];
   const seen = new Set();
   const blocks = html.split(/<div[^>]+class=["']col-[\w-]+ mix\b/i).slice(1);
@@ -112,6 +114,62 @@ async function getSoundpads(force) {
 }
 
 // ---------------------------------------------------------------------------
+// The ambience track list (Tabletop Audio's home page)
+// ---------------------------------------------------------------------------
+// Each track on https://tabletopaudio.com/ is a block like:
+//   <div class="col-md-3 mix music horror fantasy">
+//     <h3 class="white">Demon Hunter</h3> <sup> *new* </sup> <i>ambience + music</i>
+//     <span class="white flavor">It's a family business. …</span>
+//     <button … data-track="song_531"> … <img data-src="https://images…jpg">
+// "https://tabletopaudio.com/?531" opens the site with that track in its player.
+function parseTracks(html) {
+  const out = [];
+  const seen = new Set();
+  const blocks = html.split(/<div[^>]+class=["']col-[\w-]+ mix\b/i).slice(1);
+  for (const block of blocks) {
+    const classes = (block.match(/^([^"']*)["']/) || [])[1] || "";
+    const num = (block.match(/data-track=["']song_(\d+)["']/i) || [])[1];
+    const name = text((block.match(/<h3[^>]*>([\s\S]*?)<\/h3>/i) || [])[1]);
+    if (!num || !name || seen.has(num)) continue; // sneak-peek tiles have no track yet
+    seen.add(num);
+    out.push({
+      id: Number(num),
+      name,
+      url: `${TTA}?${num}`,
+      image: (block.match(/data-src=["'](https:\/\/[^"']+\.(?:jpe?g|png|webp))["']/i) || [])[1] || null,
+      kind: text((block.match(/<i[^>]*>([\s\S]*?)<\/i>/i) || [])[1]), // "ambience", "music", "ambience + music"
+      description: text((block.match(/class=["'][^"']*\bflavor\b[^"']*["'][^>]*>([\s\S]*?)<\/span>/i) || [])[1])
+        .replace(/\s*\[[^\]]*Patreon[^\]]*\]?\s*$/i, ""), // drop "[10 alternate versions for Patreon Patrons]"
+      categories: classes.split(/\s+/).filter((c) => c && c !== "mix" && !/^col-/.test(c)),
+      isNew: /\*new\*/i.test(block.slice(0, 400)),
+    });
+  }
+  return out.sort((a, b) => b.id - a.id); // newest first
+}
+
+let trackCache = readJson("tta-tracks");
+
+async function getTracks(force) {
+  if (!force && trackCache?.tracks?.length && Date.now() - trackCache.fetchedAt < DAY) return trackCache;
+  try {
+    const r = await fetch(TTA, {
+      headers: { "User-Agent": "Mozilla/5.0 KenkuEnhanced (track list)" },
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!r.ok) throw new Error(`Tabletop Audio answered ${r.status}`);
+    const tracks = parseTracks(await r.text());
+    if (!tracks.length) throw new Error("Couldn't read the track list (the page may have changed)");
+    trackCache = { fetchedAt: Date.now(), tracks };
+    try { writeJson("tta-tracks", trackCache); } catch { /* the in-memory copy still works */ }
+    return trackCache;
+  } catch (err) {
+    const error = err.cause?.code ? `Couldn't reach Tabletop Audio (${err.cause.code})` : err.message;
+    if (trackCache?.tracks?.length) return { ...trackCache, stale: true, error };
+    return { fetchedAt: null, tracks: [], error };
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Routes
 // ---------------------------------------------------------------------------
 // jsonOnly: middleware from server.js that only accepts real JSON requests.
@@ -136,7 +194,12 @@ module.exports = function linksRouter(jsonOnly) {
     res.json(await getSoundpads(req.query.refresh === "1"));
   });
 
+  router.get("/tracks", async (req, res) => {
+    res.json(await getTracks(req.query.refresh === "1"));
+  });
+
   return router;
 };
 
 module.exports.parseSoundpads = parseSoundpads;
+module.exports.parseTracks = parseTracks;

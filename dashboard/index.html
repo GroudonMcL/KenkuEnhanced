@@ -99,6 +99,10 @@
         <div id="kenku-add-list" class="pick-list"></div>
       </div>
     </div>
+    <div class="picker-foot">
+      <span id="kenku-add-selected" class="picker-selected"></span>
+      <button type="button" id="kenku-add-go" class="primary">＋ Add</button>
+    </div>
   </dialog>
 
   <!-- "+ YouTube" (youtube-panel.js) -->
@@ -114,6 +118,16 @@
         </select>
         <button type="submit" class="primary">Search</button>
       </form>
+      <div class="quick-searches">
+        <span class="hint">Try:</span>
+        <button type="button" data-yt-q="tavern ambience">🍺 Tavern</button>
+        <button type="button" data-yt-q="dungeon ambience">🕯 Dungeon</button>
+        <button type="button" data-yt-q="forest night ambience">🌲 Forest at night</button>
+        <button type="button" data-yt-q="rain thunderstorm ambience">🌧 Storm</button>
+        <button type="button" data-yt-q="medieval city ambience">🏰 City</button>
+        <button type="button" data-yt-q="epic battle music rpg">⚔ Battle music</button>
+        <button type="button" data-yt-q="calm fantasy music">🎻 Calm music</button>
+      </div>
       <form id="yt-link-form" class="url-row">
         <input id="yt-link" type="text" placeholder="…or paste a YouTube link" autocomplete="off">
         <button type="submit">Use link</button>
@@ -123,38 +137,36 @@
     </div>
   </dialog>
 
-  <!-- "+ Website" (links.js): address, saved links, Tabletop Audio SoundPads -->
+  <!-- "+ Website" (links.js): Tabletop Audio, presets, saved links, or any address -->
   <dialog id="web-add-dialog" class="dialog picker-dialog wide">
     <div class="picker-head"><span class="tile-badge b-w">Website</span><h2>Add a website tile</h2>
       <button type="button" id="web-add-close" class="icon-btn" title="Close">✕</button></div>
-    <div class="picker-main">
-      <form id="web-add-form" class="url-row">
-        <input id="web-add-url" type="text" placeholder="Type or paste an address – https://…" autocomplete="off">
-        <button type="submit" class="primary">＋ Add tile</button>
-        <button type="button" id="link-save-current" title="Save this address as a link button">☆ Save link</button>
-      </form>
-        <!-- Saved links (links.js). Click = open; in edit mode, click = edit. -->
-        <div class="link-bar">
-        <div id="link-list" class="link-list"></div>
-        <div class="link-tools">
-          <button type="button" id="soundpad-toggle" class="small" title="Browse Tabletop Audio's SoundPads">🎲 SoundPads</button>
-          <button type="button" id="link-edit-mode" class="small" title="Click a link to rename, change or delete it">✎ Edit links</button>
-        </div>
-        </div>
-
-        <!-- Tabletop Audio SoundPad browser -->
-        <div id="soundpad-browser" class="soundpad-browser" hidden>
-        <div class="soundpad-head">
-          <input id="soundpad-filter" type="search" placeholder="Filter SoundPads (e.g. tavern)" autocomplete="off">
-          <button type="button" id="soundpad-close" class="small">✕ Close</button>
-        </div>
-        <div id="soundpad-cats" class="tabs"></div>
-        <div id="soundpad-message" class="notice" hidden></div>
-        <div id="soundpad-grid" class="soundpad-grid"></div>
-        <p class="hint">SoundPads run on Tabletop Audio's own site. Unless the experimental pass-through is on
-          (⚙ Settings → Experimental), they open in a new Kenku tab (their audio still reaches Discord). Tabletop Audio is free and fan-supported:
-          <a href="https://www.patreon.com/tabletopaudio" target="_blank" rel="noopener">support them on Patreon</a>.</p>
-        </div>
+    <div class="picker-body">
+      <nav class="picker-side">
+        <h4>Tabletop Audio</h4>
+        <button type="button" data-sec="soundpads">🎲 SoundPads <small></small></button>
+        <button type="button" data-sec="tracks">🎵 Ambience tracks <small></small></button>
+        <button type="button" data-sec="custom">⭐ My Custom SoundPads <small></small></button>
+        <h4>Other sites</h4>
+        <button type="button" data-sec="presets">🌐 Ambience sites <small></small></button>
+        <h4>Yours</h4>
+        <button type="button" data-sec="links">🔗 Saved links <small></small></button>
+      </nav>
+      <div class="picker-main">
+        <input id="web-add-search" type="search" placeholder="Search (e.g. tavern), or paste an address" autocomplete="off">
+        <div id="web-add-chips" class="tabs"></div>
+        <div id="web-add-message" class="notice" hidden></div>
+        <div id="web-add-list" class="pick-cards"></div>
+        <p id="web-add-hint" class="hint">Tabletop Audio is free and fan-supported:
+          <a href="https://www.patreon.com/tabletopaudio" target="_blank" rel="noopener">support them on Patreon</a>.
+          Its pages show inside a tile only with ⚙ Settings → Experimental → pass-through.</p>
+      </div>
+    </div>
+    <div class="picker-foot">
+      <span id="web-add-selected" class="picker-selected"></span>
+      <button type="button" id="web-add-save" title="Save this address as a link">☆ Save link</button>
+      <button type="button" id="web-add-tab" title="Open it in a new Kenku tab instead of a tile">↗ Kenku tab</button>
+      <button type="button" id="web-add-go" class="primary">＋ Add tile</button>
     </div>
   </dialog>
 

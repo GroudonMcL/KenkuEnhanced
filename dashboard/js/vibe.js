@@ -315,7 +315,12 @@ const Vibe = (() => {
     if (pads.length) {
       const padRow = section("Tabletop Audio SoundPads");
       for (const { p } of pads) {
-        const b = button(`${p.name} ↗`, () => Links.open(p.url, "tab"));
+        // A tile when the pass-through can show it, otherwise a Kenku tab
+        const inTile = !EmbedPanel.isBlocked(p.url);
+        const b = button(inTile ? `＋ ${p.name}` : `${p.name} ↗`, () => {
+          $("vibe-dialog").close?.();
+          Links.open(p.url, undefined, { newTile: true });
+        });
         b.title = p.description;
         padRow.appendChild(b);
       }

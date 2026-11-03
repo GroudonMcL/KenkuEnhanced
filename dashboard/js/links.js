@@ -1,10 +1,17 @@
-// links.js – Phase 4: saved links + the Tabletop Audio SoundPad browser.
+// links.js – saved links + the "+ Website" dialog.
 //
-// Saved links are buttons in the "+ Website" dialog (stored by the helper in
-// data/links.json). A link opens either in a Website tile or in a new Kenku
-// tab. "Automatic" uses a tile unless the site refuses to be embedded –
-// Tabletop Audio refuses (unless the experimental pass-through is on), so
-// SoundPads then open in a new Kenku tab, where their audio still reaches Discord.
+// The dialog has a sidebar:
+//   Tabletop Audio – 🎲 SoundPads, 🎵 Ambience tracks, ⭐ My Custom SoundPads
+//   Presets        – other ambience sites (myNoise, Ambient-Mixer, …)
+//   Your links     – addresses you saved with ☆
+// plus one box that searches the current list, or takes an address you paste.
+// Pick something, then "+ Add tile" (or double-click it).
+//
+// Saved links are stored by the helper in data/links.json. A link opens either
+// in a Website tile or in a new Kenku tab. "Automatic" uses a tile unless the
+// site refuses to be embedded. (Adding a tile from the dialog always makes a
+// tile: for sites that refuse, the tile shows an "open in a Kenku tab" button,
+// so the site still has its place on the board.)
 //
 // Kenku turns every window.open into a NEW tab (it can't reuse one), so when a
 // scene opens its link automatically we skip links already opened since the
@@ -13,11 +20,31 @@
 const Links = (() => {
   const $ = (id) => document.getElementById(id);
   let links = [];
-  let editMode = false;
-  let editing = null;          // { link, isNew } while the dialog is open
-  let soundpads = null;        // the SoundPad list, once loaded
-  let category = Store.get("links.soundpadCategory", "all");
+  let editing = null;          // { link, isNew } while the link editor is open
+  let soundpads = null;        // Tabletop Audio SoundPads, once loaded
+  let tracks = null;           // Tabletop Audio ambience tracks, once loaded
+  const listMessages = {};     // section → problem loading its list
   const openedTabs = new Set(); // URLs opened in a new tab since the page loaded
+
+  const TTA = "https://tabletopaudio.com/";
+  const CUSTOM_SP = TTA + "custom_sp.html";
+
+  // Other ambience sites. `embeds: false` = the site refuses to be shown inside
+  // other pages (tested 2026-11-03), so its tile shows an "open" button for now.
+  const PRESETS = [
+    { id: "mynoise", icon: "🎚", name: "myNoise", url: "https://mynoise.net/noiseMachines.php",
+      description: "Noise and ambience generators with sliders – rain, forest, dungeon, spaceship…", embeds: false },
+    { id: "ambientmixer", icon: "🧪", name: "Ambient-Mixer (RPG)", url: "https://rpg.ambient-mixer.com/",
+      description: "Thousands of user-made ambience mixes for fantasy and RPG settings.", embeds: false },
+    { id: "rainymood", icon: "🌧", name: "Rainy Mood", url: "https://www.rainymood.com/",
+      description: "A simple, endless rain and thunder loop.", embeds: false },
+    { id: "syrinscape", icon: "🐉", name: "Syrinscape", url: "https://app.syrinscape.com/",
+      description: "RPG soundscapes and sound effects. Needs a Syrinscape account (free tier available).", embeds: true },
+    { id: "taverntunes", icon: "🍺", name: "TavernTunes", url: "https://app.taverntunes.com/",
+      description: "Music and ambience for D&D and board games, made to listen to together.", embeds: true },
+    { id: "asoftmurmur", icon: "🍃", name: "A Soft Murmur", url: "https://asoftmurmur.com/",
+      description: "Mix rain, wind, waves, fire and more with simple sliders.", embeds: true },
+  ];
 
   // ===========================================================================
   // Loading / saving (through the helper)
@@ -28,7 +55,7 @@ const Links = (() => {
     } catch {
       links = [];
     }
-    render();
+    renderDialog();
   }
 
   async function persist() {
@@ -46,21 +73,47 @@ const Links = (() => {
     }
   }
 
+  // The Tabletop Audio lists (the helper reads them once a day and keeps a copy).
+  async function loadList(kind, refresh) {
+    try {
+      const data = await (await fetch(`/api/links/${kind}` + (refresh ? "?refresh=1" : ""))).json();
+      const list = data[kind] || [];
+      if (!list.length) listMessages[kind] = [`${data.error || "Nothing found"}.`, "error"];
+      else if (data.stale) listMessages[kind] = [`Showing the list from ${new Date(data.fetchedAt).toLocaleDateString()} (${data.error}).`, "warn"];
+      else delete listMessages[kind];
+      return list;
+    } catch {
+      listMessages[kind] = ["Couldn't reach the helper.", "error"];
+      return [];
+    }
+  }
+  async function loadSoundpads(refresh) {
+    soundpads = await loadList("soundpads", refresh);
+    renderDialog();
+    window.dispatchEvent(new Event("link-names-changed")); // Website tiles can use the names
+  }
+  async function loadTracks(refresh) {
+    tracks = await loadList("tracks", refresh);
+    renderDialog();
+    window.dispatchEvent(new Event("link-names-changed"));
+  }
+
   const newId = () => "l-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   const sameUrl = (a, b) => EmbedPanel.normalise(a || "").replace(/\/$/, "") === EmbedPanel.normalise(b || "").replace(/\/$/, "");
   const findByUrl = (url) => links.find((l) => sameUrl(l.url, url));
+  const isCustomSoundpad = (url) => /tabletopaudio\.com\/custom_sp/i.test(url || "");
 
   // ===========================================================================
-  // Opening
+  // Opening (used by scenes and Vibe too)
   // ===========================================================================
-  // Where should this URL open? "panel" or "tab".
+  // Where should this URL open? "panel" (a Website tile) or "tab".
   function whereFor(url, openIn) {
     const mode = openIn || findByUrl(url)?.openIn || "auto";
     if (mode === "auto") return EmbedPanel.isBlocked(url) ? "tab" : "panel";
     return mode;
   }
 
-  // opts.newTile: always add a new Website tile (from the dialog)
+  // opts.newTile: always add a new Website tile
   function open(url, openIn, opts = {}) {
     url = EmbedPanel.normalise(url || "");
     if (!url) return;
@@ -68,15 +121,8 @@ const Links = (() => {
       EmbedPanel.openNewTab(url);
       openedTabs.add(url);
     } else {
-      EmbedPanel.load(url, opts).then(render); // re-highlight once we know if it loaded
+      EmbedPanel.load(url, opts);
     }
-    setTimeout(render, 0);
-  }
-
-  // Pick from the dialog: open as a new tile and close the dialog.
-  function pickFromDialog(url, openIn) {
-    $("web-add-dialog").close();
-    open(url, openIn, { newTile: true });
   }
 
   // Used by scenes: don't pile up Kenku tabs or reload a page that's already open.
@@ -91,56 +137,33 @@ const Links = (() => {
     open(url);
   }
 
-  // ===========================================================================
-  // The link buttons
-  // ===========================================================================
-  function render() {
-    const box = $("link-list");
-    box.innerHTML = "";
-    if (!links.length) {
-      box.innerHTML = '<span class="hint">No saved links. Type an address above and click ☆ Save.</span>';
-    }
-    links.forEach((link) => {
-      const b = document.createElement("button");
-      b.type = "button";
-      b.className = "small link-btn";
-      const where = whereFor(link.url, link.openIn);
-      b.textContent = link.name + (where === "tab" ? " ↗" : "");
-      b.title = editMode ? "Click to edit" : `${link.url}\n${where === "tab" ? "Opens in a new Kenku tab" : "Adds a Website tile"}`;
-      b.classList.toggle("on", where === "panel" && EmbedPanel.urls().some((u) => sameUrl(u, link.url)));
-      b.onclick = () => (editMode ? openDialog(link, false) : pickFromDialog(link.url, link.openIn));
-      box.appendChild(b);
-    });
-    $("link-edit-mode").classList.toggle("on", editMode);
-    $("link-edit-mode").textContent = editMode ? "✓ Done" : "✎ Edit links";
-    $("link-list").classList.toggle("editing", editMode);
-    if (soundpads) renderSoundpads(); // update the ☆ / ★ marks
-  }
-
-  // Add a link without the dialog (from the SoundPad browser). Returns the link.
-  async function add(name, url, openIn = "auto") {
-    const existing = findByUrl(url);
-    if (existing) return existing;
-    const link = { id: newId(), name: name.slice(0, 80), url, openIn };
-    links.push(link);
-    render();
-    await persist();
-    return link;
+  // Name to show for an address we know (SoundPad, track, preset, saved link), or "".
+  function nameFor(url) {
+    const pad = soundpads?.find((p) => sameUrl(p.url, url));
+    if (pad) return `${pad.name} – Tabletop Audio SoundPad`;
+    const track = tracks?.find((t) => sameUrl(t.url, url));
+    if (track) return `${track.name} – Tabletop Audio`;
+    const link = findByUrl(url);
+    if (link) return link.name;
+    const preset = PRESETS.find((p) => sameUrl(p.url, url));
+    if (preset) return preset.name;
+    if (isCustomSoundpad(url)) return "Custom SoundPad – Tabletop Audio";
+    return "";
   }
 
   // ===========================================================================
-  // Link editor dialog
+  // Link editor dialog (☆ Save link / ✎ edit)
   // ===========================================================================
-  function dialogMessage(text, kind = "warn") {
+  function linkMessage(text, kind = "warn") {
     const box = $("link-message");
     box.hidden = !text;
     box.className = `notice notice-${kind}`;
     box.textContent = text || "";
   }
 
-  function openDialog(link, isNew) {
+  function openLinkEditor(link, isNew) {
     editing = { link, isNew };
-    dialogMessage(null);
+    linkMessage(null);
     $("link-dialog-title").textContent = isNew ? "Save link" : "Edit link";
     $("ln-name").value = link.name || "";
     $("ln-url").value = link.url || "";
@@ -151,11 +174,15 @@ const Links = (() => {
     $("link-dialog").showModal();
   }
 
-  // A sensible name for an address: the SoundPad's name, or the site name.
+  // A sensible name for an address: the SoundPad's / track's name, or the site name.
   function guessName(url) {
     const pad = soundpads?.find((p) => sameUrl(p.url, url));
     if (pad) return pad.name;
-    if (/tabletopaudio\.com\/custom_sp/i.test(url)) return "My Custom SoundPad";
+    const track = tracks?.find((t) => sameUrl(t.url, url));
+    if (track) return track.name;
+    if (isCustomSoundpad(url)) return "My Custom SoundPad";
+    const preset = PRESETS.find((p) => sameUrl(p.url, url));
+    if (preset) return preset.name;
     try {
       return new URL(url).hostname.replace(/^www\./, "");
     } catch {
@@ -163,54 +190,45 @@ const Links = (() => {
     }
   }
 
-  // Name to show for an address we know (SoundPad, saved link), or "".
-  function nameFor(url) {
-    const pad = soundpads?.find((p) => sameUrl(p.url, url));
-    if (pad) return `${pad.name} – Tabletop Audio SoundPad`;
-    const link = findByUrl(url);
-    if (link) return link.name;
-    if (/tabletopaudio\.com\/custom_sp/i.test(url)) return "Custom SoundPad – Tabletop Audio";
-    return "";
-  }
-
-  // ☆ in a Website tile: save (or edit) its address as a link.
-  function saveUrl(url) {
+  // ☆ in a Website tile or the dialog: save (or edit) an address as a link.
+  function saveUrl(url, name) {
     url = EmbedPanel.normalise(url || "");
     if (!url) return;
     const existing = findByUrl(url);
-    if (existing) return openDialog(existing, false);
-    openDialog({ id: newId(), name: guessName(url), url, openIn: "auto" }, true);
+    if (existing) return openLinkEditor(existing, false);
+    openLinkEditor({ id: newId(), name: name || guessName(url), url, openIn: "auto" }, true);
   }
 
-  function saveCurrent() {
-    const url = EmbedPanel.normalise($("web-add-url").value);
-    if (!url) {
-      $("web-add-url").focus();
-      return;
-    }
+  // Add a link without the editor. Returns the link.
+  async function add(name, url, openIn = "auto") {
     const existing = findByUrl(url);
-    if (existing) return openDialog(existing, false);
-    openDialog({ id: newId(), name: guessName(url), url, openIn: "auto" }, true);
+    if (existing) return existing;
+    const link = { id: newId(), name: name.slice(0, 80), url, openIn };
+    links.push(link);
+    renderDialog();
+    await persist();
+    return link;
   }
 
-  async function saveDialog(e) {
+  async function saveLinkEditor(e) {
     e.preventDefault();
     const name = $("ln-name").value.trim();
     const url = EmbedPanel.normalise($("ln-url").value);
     try {
       if (!["http:", "https:"].includes(new URL(url).protocol)) throw new Error();
     } catch {
-      return dialogMessage("Please enter a full web address, like https://tabletopaudio.com/…", "error");
+      return linkMessage("Please enter a full web address, like https://tabletopaudio.com/…", "error");
     }
-    if (!name) return dialogMessage("Give the link a name.", "error");
+    if (!name) return linkMessage("Give the link a name.", "error");
     const other = findByUrl(url);
-    if (other && other.id !== editing.link.id) return dialogMessage(`You already saved this address as "${other.name}".`, "error");
+    if (other && other.id !== editing.link.id) return linkMessage(`You already saved this address as "${other.name}".`, "error");
 
     const link = { ...editing.link, name, url, openIn: $("ln-open").value };
     if (editing.isNew) links.push(link);
     else links[links.findIndex((l) => l.id === link.id)] = link;
     $("link-dialog").close();
-    render();
+    renderDialog();
+    window.dispatchEvent(new Event("link-names-changed"));
     await persist();
   }
 
@@ -218,7 +236,7 @@ const Links = (() => {
     if (!confirm(`Delete the link "${editing.link.name}"?`)) return;
     links = links.filter((l) => l.id !== editing.link.id);
     $("link-dialog").close();
-    render();
+    renderDialog();
     await persist();
   }
 
@@ -227,164 +245,307 @@ const Links = (() => {
     const j = i + delta;
     if (i < 0 || j < 0 || j >= links.length) return;
     [links[i], links[j]] = [links[j], links[i]];
-    render();
+    renderDialog();
     await persist();
   }
 
   // ===========================================================================
-  // SoundPad browser
+  // The "+ Website" dialog
   // ===========================================================================
-  function soundpadMessage(text, kind = "warn", withLink = false) {
-    const box = $("soundpad-message");
-    box.hidden = !text;
-    box.className = `notice notice-${kind}`;
-    box.textContent = text || "";
-    if (withLink) {
-      const b = document.createElement("button");
-      b.className = "small";
-      b.textContent = "↗ Open the SoundPad page on Tabletop Audio";
-      b.onclick = () => open("https://tabletopaudio.com/soundpad.html", "tab");
-      box.append(document.createElement("br"), b);
-    }
+  let section = Store.get("links.section", "soundpads");
+  let category = "all";
+  let selected = null;        // { url, name, tileName }
+  let showAll = false;        // big lists show the first 120 until "Show more"
+  const PAGE = 120;
+
+  const el = (tag, cls, text) => {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text !== undefined) e.textContent = text;
+    return e;
+  };
+  const cap = (c) => c[0].toUpperCase() + c.slice(1);
+
+  // "tavern night" → every word must appear somewhere in the item's text
+  function matcher() {
+    const words = $("web-add-search").value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    return (...texts) => {
+      const hay = texts.join(" ").toLowerCase();
+      return words.every((w) => hay.includes(w));
+    };
   }
 
-  async function loadSoundpads(refresh) {
-    soundpadMessage("Loading the SoundPad list…");
-    try {
-      const data = await (await fetch("/api/links/soundpads" + (refresh ? "?refresh=1" : ""))).json();
-      soundpads = data.soundpads || [];
-      if (!soundpads.length) soundpadMessage(`${data.error || "No SoundPads found"}.`, "error", true);
-      else if (data.stale) soundpadMessage(`Showing the list from ${new Date(data.fetchedAt).toLocaleDateString()} (${data.error}).`, "warn");
-      else soundpadMessage(null);
-    } catch {
-      soundpads = [];
-      soundpadMessage("Couldn't reach the helper.", "error", true);
-    }
-    renderSoundpads();
+  // Does the search box hold an address rather than search words?
+  function typedAddress() {
+    const v = $("web-add-search").value.trim();
+    if (!v || /\s/.test(v)) return "";
+    if (/^https?:\/\//i.test(v) || /^[\w-]+(\.[\w-]+)+(\/|$)/.test(v)) return EmbedPanel.normalise(v);
+    return "";
   }
 
-  function renderSoundpads() {
-    const cats = ["all", ...new Set(soundpads.flatMap((p) => p.categories))];
+  const customLinks = () => links.filter((l) => isCustomSoundpad(l.url));
+  const otherLinks = () => links.filter((l) => !isCustomSoundpad(l.url));
+
+  // What each section shows, already filtered by the search box (and category).
+  function itemsFor(sec, match, cat = "all") {
+    const inCat = (x) => cat === "all" || x.categories.includes(cat);
+    switch (sec) {
+      case "soundpads":
+        return (soundpads || []).filter((p) => inCat(p) && match(p.name, p.description, p.categories.join(" ")));
+      case "tracks":
+        return (tracks || []).filter((t) => inCat(t) && match(t.name, t.description, t.kind, t.categories.join(" ")));
+      case "custom":
+        return customLinks().filter((l) => match(l.name, l.url));
+      case "presets":
+        return PRESETS.filter((p) => match(p.name, p.description, p.url));
+      case "links":
+        return otherLinks().filter((l) => match(l.name, l.url));
+    }
+    return [];
+  }
+
+  function select(item) {
+    selected = item;
+    renderFooter();
+    document.querySelectorAll("#web-add-list .selected").forEach((x) => x.classList.remove("selected"));
+    document.querySelector(`#web-add-list [data-url="${CSS.escape(item?.url || "")}"]`)?.classList.add("selected");
+  }
+
+  // A clickable item: click = select, double-click = add straight away.
+  function selectable(node, item) {
+    node.dataset.url = item.url;
+    node.tabIndex = 0;
+    if (selected && sameUrl(selected.url, item.url)) node.classList.add("selected");
+    node.addEventListener("click", () => select(item));
+    node.addEventListener("dblclick", () => { select(item); addSelected(); });
+    node.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { select(item); addSelected(); }
+    });
+    return node;
+  }
+
+  function card(item, { image, name, info, isNew, saved }) {
+    const c = el("div", "pick-card");
+    const img = el("div", "pick-img");
+    if (image) {
+      const i = el("img");
+      i.loading = "lazy"; // only load pictures that scroll into view
+      i.alt = "";
+      i.src = image;
+      img.append(i);
+    }
+    if (isNew) img.append(el("span", "pick-new", "new"));
+    if (saved) img.append(el("span", "pick-saved", "★"));
+    c.append(img, el("b", "", name), el("small", "", info));
+    c.title = item.description || name;
+    return selectable(c, item);
+  }
+
+  function row(item, { icon, name, info, mark, onEdit }) {
+    const r = el("div", "pick-row");
+    r.append(el("span", "pick-icon w", icon));
+    const text = el("span", "pick-text");
+    text.append(el("b", "", name), el("small", "", info));
+    r.append(text);
+    if (mark) r.append(el("span", "pick-mark", mark));
+    if (onEdit) {
+      const b = el("button", "tile-btn", "✎");
+      b.type = "button";
+      b.title = "Rename, change or delete this link";
+      b.onclick = (e) => { e.stopPropagation(); onEdit(); };
+      r.append(b);
+    }
+    return selectable(r, item);
+  }
+
+  const embedMark = (url, knownEmbeds) => {
+    const blocked = knownEmbeds === false ? !EmbedPanel.viaPassThrough(url) : EmbedPanel.isBlocked(url);
+    return blocked ? "opens in a Kenku tab" : "";
+  };
+
+  function renderDialog() {
+    if (!$("web-add-dialog").open) return;
+    const match = matcher();
+    const words = $("web-add-search").value.trim();
+    const addr = typedAddress();
+
+    // Sidebar: active section + counts (matches while searching)
+    document.querySelectorAll("#web-add-dialog [data-sec]").forEach((b) => {
+      b.classList.toggle("on", b.dataset.sec === section);
+      const n = b.querySelector("small");
+      if (n) n.textContent = itemsFor(b.dataset.sec, words && !addr ? match : () => true).length || "";
+    });
+
+    // Category chips (Tabletop Audio lists only)
+    const chips = $("web-add-chips");
+    chips.innerHTML = "";
+    const all = section === "soundpads" ? soundpads || [] : section === "tracks" ? tracks || [] : [];
+    const cats = [...new Set(all.flatMap((x) => x.categories))].filter((c) => c !== "music" && c !== "scif").sort();
     if (!cats.includes(category)) category = "all";
-    const catBox = $("soundpad-cats");
-    catBox.innerHTML = "";
-    if (soundpads.length) {
-      for (const c of cats) {
-        const b = document.createElement("button");
-        b.type = "button";
-        b.className = "small" + (c === category ? " on" : "");
-        b.textContent = c === "all" ? "All" : c[0].toUpperCase() + c.slice(1);
-        b.onclick = () => {
-          category = c;
-          Store.set("links.soundpadCategory", c);
-          renderSoundpads();
-        };
-        catBox.appendChild(b);
-      }
+    chips.hidden = !cats.length;
+    for (const c of ["all", ...cats]) {
+      const b = el("button", "small" + (c === category ? " on" : ""), c === "all" ? "All" : c === "scifi" ? "Sci-fi" : cap(c));
+      b.type = "button";
+      b.onclick = () => { category = c; showAll = false; renderDialog(); };
+      chips.append(b);
     }
 
-    const words = $("soundpad-filter").value.trim().toLowerCase().split(/\s+/).filter(Boolean);
-    const shown = soundpads.filter((p) =>
-      (category === "all" || p.categories.includes(category)) &&
-      words.every((w) => `${p.name} ${p.description} ${p.categories.join(" ")}`.toLowerCase().includes(w)));
+    const msg = listMessages[section];
+    $("web-add-message").hidden = !msg;
+    if (msg) {
+      $("web-add-message").className = `notice notice-${msg[1]}`;
+      $("web-add-message").textContent = msg[0];
+    }
 
-    const grid = $("soundpad-grid");
-    grid.innerHTML = "";
-    if (soundpads.length && !shown.length) grid.innerHTML = '<span class="hint">No SoundPads match.</span>';
-    for (const p of shown) {
-      const card = document.createElement("div");
-      card.className = "soundpad-card";
-      card.title = p.description;
+    const box = $("web-add-list");
+    box.innerHTML = "";
+    box.className = ["soundpads", "tracks"].includes(section) ? "pick-cards" : "pick-list";
+    const holder = el("div", "pick-list");
 
-      const img = document.createElement("img");
-      img.loading = "lazy";
-      img.alt = "";
-      if (p.image) img.src = p.image;
+    // A pasted address always comes first
+    if (addr) {
+      const item = { url: addr, name: guessName(addr), tileName: Links.nameFor(addr) || guessName(addr) };
+      const r = row(item, { icon: "🔗", name: "Add this address", info: addr, mark: embedMark(addr) });
+      r.classList.add("pick-address");
+      holder.append(r);
+      if (!selected || !sameUrl(selected.url, addr)) select(item);
+      box.className = "pick-list";
+      box.append(holder);
+      renderFooter();
+      return;
+    }
 
-      const name = document.createElement("div");
-      name.className = "soundpad-name";
-      name.textContent = p.name;
-      if (p.isNew) {
-        const badge = document.createElement("span");
-        badge.className = "soundpad-new";
-        badge.textContent = "new";
-        name.append(" ", badge);
+    const items = itemsFor(section, match, category);
+    const shown = showAll ? items : items.slice(0, PAGE);
+    if (section === "soundpads") {
+      if (!soundpads) box.append(el("p", "hint", "Loading the SoundPad list…"));
+      for (const p of shown) {
+        box.append(card({ url: p.url, name: p.name, tileName: `${p.name} – Tabletop Audio SoundPad`, description: p.description },
+          { image: p.image, name: p.name, info: [p.sounds && `${p.sounds} sounds`, p.categories.filter((c) => c !== "music").join(" · ")].filter(Boolean).join(" · "), isNew: p.isNew, saved: !!findByUrl(p.url) }));
       }
+    } else if (section === "tracks") {
+      if (!tracks) box.append(el("p", "hint", "Loading the track list…"));
+      for (const t of shown) {
+        box.append(card({ url: t.url, name: t.name, tileName: `${t.name} – Tabletop Audio`, description: t.description },
+          { image: t.image, name: t.name, info: `#${t.id} · ${t.kind}`, isNew: t.isNew, saved: !!findByUrl(t.url) }));
+      }
+    } else if (section === "custom") {
+      box.append(row({ url: CUSTOM_SP, name: "Custom SoundPad", tileName: "Custom SoundPad – Tabletop Audio" },
+        { icon: "＋", name: "Make a new Custom SoundPad", info: "Build your own mix on Tabletop Audio, click Get Link there, then ☆ Save it here" }));
+      for (const l of items) {
+        box.append(row({ url: l.url, name: l.name, tileName: l.name },
+          { icon: "⭐", name: l.name, info: l.url, mark: embedMark(l.url), onEdit: () => openLinkEditor(l, false) }));
+      }
+      if (!items.length) box.append(el("p", "hint", words ? "None of your Custom SoundPads match." : "No saved Custom SoundPads yet. Paste a Custom SoundPad share link in the box above and click ☆ Save link."));
+    } else if (section === "presets") {
+      for (const p of items) {
+        box.append(row({ url: p.url, name: p.name, tileName: p.name },
+          { icon: p.icon, name: p.name, info: p.description, mark: embedMark(p.url, p.embeds) }));
+      }
+    } else if (section === "links") {
+      for (const l of items) {
+        box.append(row({ url: l.url, name: l.name, tileName: l.name },
+          { icon: "🔗", name: l.name, info: l.url, mark: l.openIn === "tab" ? "always a Kenku tab" : embedMark(l.url), onEdit: () => openLinkEditor(l, false) }));
+      }
+      if (!items.length) box.append(el("p", "hint", words ? "No saved links match." : "No saved links yet. Paste an address in the box above and click ☆ Save link."));
+    }
+    if (items.length > shown.length) {
+      const more = el("button", "small pick-more", `Show all ${items.length}`);
+      more.type = "button";
+      more.onclick = () => { showAll = true; renderDialog(); };
+      box.append(more);
+    }
+    if (["soundpads", "tracks"].includes(section) && (soundpads || tracks) && !items.length && !msg) {
+      box.append(el("p", "hint", "Nothing matches."));
+    }
 
-      const info = document.createElement("div");
-      info.className = "soundpad-info";
-      info.textContent = p.sounds ? `${p.sounds} sounds` : "";
+    $("web-add-hint").hidden = !["soundpads", "tracks", "custom"].includes(section);
+    renderFooter();
+  }
 
-      const actions = document.createElement("div");
-      actions.className = "soundpad-actions";
-      const go = document.createElement("button");
-      go.type = "button";
-      go.className = "small primary";
-      const inPanel = whereFor(p.url) === "panel"; // only with the experimental pass-through
-      go.textContent = inPanel ? "＋ Add tile" : "↗ Open";
-      go.title = inPanel ? "Add a Website tile with this SoundPad" : "Open in a new Kenku tab";
-      go.onclick = () => pickFromDialog(p.url);
-      const saved = !!findByUrl(p.url);
-      const star = document.createElement("button");
-      star.type = "button";
-      star.className = "small" + (saved ? " on" : "");
-      star.textContent = saved ? "★ Saved" : "☆ Save";
-      star.title = saved ? "It's in your links (edit or delete it with ✎ Edit links)" : "Add to your links, so scenes can use it";
-      star.disabled = saved;
-      star.onclick = () => add(p.name, p.url);
-      actions.append(go, star);
-
-      card.append(img, name, info, actions);
-      grid.appendChild(card);
+  function renderFooter() {
+    const go = $("web-add-go");
+    go.disabled = !selected;
+    $("web-add-tab").disabled = !selected;
+    $("web-add-save").disabled = !selected;
+    const box = $("web-add-selected");
+    box.innerHTML = "";
+    if (!selected) {
+      box.textContent = "Pick something (double-click adds it straight away).";
+      return;
+    }
+    const saved = findByUrl(selected.url);
+    $("web-add-save").textContent = saved ? "★ Saved" : "☆ Save link";
+    box.append("Selected: ", el("b", "", selected.name), ` – the tile will be called “${selected.tileName}”`);
+    if (EmbedPanel.isBlocked(selected.url) && !EmbedPanel.viaPassThrough(selected.url)) {
+      box.append(el("span", "pick-warn", " · this site can't show inside a tile, so the tile will have an “open in a Kenku tab” button"));
     }
   }
 
-  function toggleBrowser(force) {
-    const box = $("soundpad-browser");
-    box.hidden = force !== undefined ? !force : !box.hidden;
-    $("soundpad-toggle").classList.toggle("on", !box.hidden);
-    Store.set("links.browserOpen", !box.hidden);
-    if (!box.hidden && !soundpads) loadSoundpads();
+  function addSelected() {
+    if (!selected) return;
+    $("web-add-dialog").close();
+    EmbedPanel.load(selected.url, { newTile: true });
+  }
+
+  function openAdd(sec) {
+    if (sec) section = sec;
+    selected = null;
+    showAll = false;
+    $("web-add-search").value = "";
+    $("web-add-dialog").showModal();
+    renderDialog();
+    $("web-add-search").focus();
+    if (!soundpads?.length) loadSoundpads();
+    if (!tracks?.length) loadTracks();
   }
 
   // ===========================================================================
   function init() {
-    $("link-save-current").addEventListener("click", saveCurrent);
-    $("link-edit-mode").addEventListener("click", () => {
-      editMode = !editMode;
-      render();
-    });
-    $("link-form").addEventListener("submit", saveDialog);
+    $("link-form").addEventListener("submit", saveLinkEditor);
     $("ln-cancel").addEventListener("click", () => $("link-dialog").close());
     $("ln-delete").addEventListener("click", deleteLink);
     $("ln-left").addEventListener("click", () => move(-1));
     $("ln-right").addEventListener("click", () => move(1));
 
-    $("soundpad-toggle").addEventListener("click", () => toggleBrowser());
-    $("soundpad-close").addEventListener("click", () => toggleBrowser(false));
-    $("soundpad-filter").addEventListener("input", () => soundpads && renderSoundpads());
-    // "+ Website" dialog
-    $("add-website").addEventListener("click", () => {
-      $("web-add-url").value = "";
-      render();
-      $("web-add-dialog").showModal();
-      if (!soundpads?.length) loadSoundpads();
-    });
+    $("add-website").addEventListener("click", () => openAdd());
     $("web-add-close").addEventListener("click", () => $("web-add-dialog").close());
-    $("web-add-form").addEventListener("submit", (e) => {
-      e.preventDefault();
-      const url = EmbedPanel.normalise($("web-add-url").value);
-      if (url) pickFromDialog(url);
+    document.querySelectorAll("#web-add-dialog [data-sec]").forEach((b) => {
+      b.addEventListener("click", () => {
+        section = b.dataset.sec;
+        Store.set("links.section", section);
+        category = "all";
+        showAll = false;
+        selected = null;
+        renderDialog();
+      });
     });
-    window.addEventListener("board-changed", render); // "on" marks for links shown in tiles
-
-    window.addEventListener("embed-mode-changed", () => {
-      render();
-      if (soundpads) renderSoundpads();
+    let typing = null;
+    $("web-add-search").addEventListener("input", () => {
+      showAll = false;
+      clearTimeout(typing);
+      typing = setTimeout(renderDialog, 120);
     });
+    $("web-add-search").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        renderDialog();
+        if (typedAddress()) addSelected();
+      }
+    });
+    $("web-add-go").addEventListener("click", addSelected);
+    $("web-add-tab").addEventListener("click", () => {
+      if (!selected) return;
+      $("web-add-dialog").close();
+      EmbedPanel.openNewTab(selected.url);
+      openedTabs.add(selected.url);
+    });
+    $("web-add-save").addEventListener("click", () => selected && saveUrl(selected.url, selected.name));
+    $("link-dialog").addEventListener("close", renderDialog);
+    window.addEventListener("embed-mode-changed", renderDialog);
 
-    if (Store.get("links.browserOpen", false)) toggleBrowser(true);
-    else loadSoundpads(); // quietly, so the scene editor can offer SoundPads (the helper caches it for a day)
+    loadSoundpads(); // quietly, so tiles, the scene editor and Vibe know SoundPad names
+    loadTracks();
     load();
   }
 
@@ -392,9 +553,11 @@ const Links = (() => {
     init,
     open,
     openForScene,
+    openAdd,
     list: () => links,
+    soundpads: () => soundpads || [],
+    tracks: () => tracks || [],
     nameFor,
     saveUrl,
-    soundpads: () => soundpads || [],
   };
 })();
