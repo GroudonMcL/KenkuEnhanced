@@ -96,6 +96,10 @@ Tested 2026-11-03:
      ambience sites, saved links), one box to search or paste an address, footer with the tile
      name, ☆ Save link / ↗ Kenku tab / ＋ Add tile. A track is `https://tabletopaudio.com/?<id>`
      (their page queues that track); works through the pass-through.
-3. Scenes as layouts: tabs, auto-save, undo, ▶ auto, smart crossfade.
+3. ✅ **Built.** Scenes as layouts (`data/boards.json`, `helper/boards.js`): tabs, auto-save,
+   ↶ Undo / Ctrl+Z, ▶ auto (YouTube + playlist tiles, per-sound on soundboard pads), smart
+   crossfade. `Board.applyLayout()` keeps tiles with the same key (same video / page / playlist /
+   soundboard) so they keep playing; leaving tiles are detached (hidden, not moved in the DOM),
+   faded, then disposed. Music volume per scene = the Now playing tile's last-set volume.
 4. General pass-through for myNoise / Rainy Mood (+ try Ambient-Mixer), mobile UA, launcher tile.
 5. Find sounds + Vibe as dialogs; README/screenshots.

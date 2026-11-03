@@ -73,6 +73,7 @@ const YouTubePanel = (() => {
       },
       player: null,
       ready: false,
+      readyWaiters: [], // whenReady() promises
       pending: null,  // something to load once the player is ready
       target: null,   // what's currently loaded
     };
@@ -182,6 +183,7 @@ const YouTubePanel = (() => {
               deck.load(deck.pending.target, deck.pending.play);
               deck.pending = null;
             }
+            deck.readyWaiters.splice(0).forEach((r) => r());
           },
           onStateChange,
           onError,
@@ -229,6 +231,8 @@ const YouTubePanel = (() => {
       save();
     };
     deck.displayName = () => tile.title();
+    // Resolves once the YouTube player exists (scenes wait for this before fading in).
+    deck.whenReady = () => (deck.ready ? Promise.resolve() : new Promise((r) => deck.readyWaiters.push(r)));
 
     // Start it
     if (apiReady) deck.createPlayer();
@@ -240,6 +244,12 @@ const YouTubePanel = (() => {
     return {
       deck,
       save: () => ({ ...deck.saved }),
+      // A scene switch kept this player: take the scene's loop setting and target
+      // volume (scenes.js fades to it – the current volume isn't touched here).
+      apply: (c) => {
+        deck.saved.volume = c.volume ?? deck.saved.volume;
+        deck.setLoop(!!c.loop);
+      },
       destroy: () => {
         deck.player?.destroy?.();
         decks.splice(decks.indexOf(deck), 1);
@@ -360,6 +370,12 @@ const YouTubePanel = (() => {
     Board.register("youtube", {
       badge: "YouTube",
       badgeClass: "y",
+      autoable: true,
+      // the same video/playlist in two scenes = the same tile (keeps playing)
+      key: (c) => {
+        const t = parse(c.url || "");
+        return t ? `${t.videoId || ""}/${t.listId || ""}` : "";
+      },
       size: { w: 4, h: 13, minW: 2, minH: 6 }, // 20px rows
       create(tile, config) {
         const inst = createDeck(tile, config);

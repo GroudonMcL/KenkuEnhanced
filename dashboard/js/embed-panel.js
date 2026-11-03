@@ -228,7 +228,11 @@ const EmbedPanel = (() => {
 
   let ready;
   function init() {
-    Board.register("website", { badge: "Website", badgeClass: "w", size: { w: 5, h: 18, minW: 2, minH: 6 } /* 20px rows */, create: createWebsite });
+    Board.register("website", { badge: "Website", badgeClass: "w",
+      // the same page in two scenes = the same tile (keeps playing)
+      key: (c) => normalise(c.url || "").replace(/\/$/, ""),
+      size: { w: 5, h: 18, minW: 2, minH: 6 }, // 20px rows
+      create: createWebsite });
     window.addEventListener("settings-saved", (e) => setTtaPassThrough(e.detail));
     // SoundPad / track lists or saved links arrived or changed → better tile names
     window.addEventListener("link-names-changed", () => instances.forEach((i) => i.rename()));

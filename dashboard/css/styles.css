@@ -89,7 +89,7 @@ button.update-badge { border: 0; cursor: pointer; }
   display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
   padding: 4px 12px; background: #16181d; border-bottom: 1px solid var(--border); min-height: 38px;
 }
-.scene-buttons { display: flex; flex-wrap: wrap; gap: 4px; flex: 1; min-width: 160px; align-items: center; }
+.scene-buttons { display: flex; flex-wrap: wrap; gap: 4px; flex: 0 1 auto; min-width: 0; align-items: center; }
 .scene-buttons .empty { color: var(--muted); font-size: .85rem; }
 .scene-btn {
   padding: 3px 10px 3px 8px; font-size: .88rem; display: inline-flex; align-items: center; gap: 6px;
@@ -106,7 +106,23 @@ button.update-badge { border: 0; cursor: pointer; }
 @keyframes pulse { 50% { opacity: .6; } }
 .scenes-bar.editing .scene-btn { outline: 1px dashed var(--muted); outline-offset: -2px; }
 .scene-tools { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
+.scene-menu { margin-left: 2px; padding: 0 3px; border-radius: 4px; opacity: .8; }
+.scene-menu:hover { background: #0002; opacity: 1; }
+.scene-saved { font-size: .75rem; min-width: 4.5em; text-align: right; }
 .scene-info { flex-basis: 100%; display: flex; gap: 10px; align-items: center; color: var(--muted); font-size: .85rem; }
+
+/* Scene switch note */
+.scene-toast {
+  position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 50;
+  background: #22262e; border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px;
+  box-shadow: 0 10px 30px #000a; font-size: .86rem; width: min(560px, calc(100vw - 24px));
+  display: flex; flex-direction: column; gap: 3px;
+}
+.toast-row { display: flex; gap: 14px; justify-content: space-between; color: var(--text); }
+.toast-row > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.toast-row .keep { color: var(--ok); white-space: nowrap; }
+.toast-row .out { color: #ff9a9d; white-space: nowrap; }
+.toast-row .in { color: var(--accent); white-space: nowrap; }
 
 .board-notice { margin: 8px 12px 0; padding: 6px 10px; font-size: .9rem; }
 
@@ -193,6 +209,20 @@ body:not(.board-locked) #board {
 .grid-stack-item > .ui-resizable-se:hover { border-color: var(--accent); opacity: 1; }
 .collapsed > .ui-resizable-handle { display: none !important; }
 
+/* A tile leaving the board during a scene switch: invisible but still alive,
+   so its video can fade out (it must not be moved in the page – that reloads it). */
+.tile-leaving { position: fixed !important; left: 0; bottom: 0; width: 2px !important; height: 2px !important;
+  opacity: 0; pointer-events: none; overflow: hidden; }
+
+/* ▶ auto switch in the title bar */
+.tile-auto {
+  font-size: .66rem; font-weight: 800; padding: 1px 6px; border-radius: 4px; flex: none; line-height: 1.3;
+  background: transparent; color: #6c7483; border: 1px dashed #444b58;
+}
+.tile-auto:hover { color: var(--text); border-color: var(--muted); }
+.tile-auto.on { background: #3a3017; color: var(--accent); border: 1px solid #6b5520; }
+.board-locked .tile-auto:not(.on) { display: none; }
+
 /* While dragging, iframes would "steal" the mouse – switch them off briefly */
 body.dragging iframe { pointer-events: none; }
 body.dragging { user-select: none; }
@@ -230,7 +260,18 @@ body.dragging { user-select: none; }
   display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; gap: 2px;
   text-align: left; padding: 6px 8px; min-height: 50px; font-weight: 600; font-size: .88rem;
 }
-.pad-name { overflow-wrap: anywhere; }
+.pad-name { overflow-wrap: anywhere; padding-right: 14px; }
+.pad { position: relative; }
+/* the small ▶ in a pad's corner = start this sound with the scene */
+.pad-auto {
+  position: absolute; top: 3px; right: 4px; font-size: .62rem; line-height: 1; padding: 2px 3px; border-radius: 3px;
+  color: #6c7483; opacity: 0; cursor: pointer;
+}
+.pad:hover .pad-auto { opacity: .9; }
+.pad-auto:hover { background: #0004; color: var(--text); }
+.pad.auto .pad-auto { opacity: 1; color: var(--accent); background: #3a3017; }
+.pad.on.auto .pad-auto { color: var(--accent-text); background: #0002; }
+.board-locked .pad:not(.auto) .pad-auto { display: none; }
 .pad-sub { font-weight: 400; font-size: .72rem; color: var(--muted); }
 .pad.on .pad-sub { color: #5a4410; }
 

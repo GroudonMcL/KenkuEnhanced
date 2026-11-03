@@ -110,40 +110,54 @@ starts a **fake** Kenku so you can try the dashboard with Kenku closed.
 Run it in a second window, with the real Kenku closed, because both use port 3333.
 
 ## Scenes
-A scene remembers a mood: a Kenku playlist and its volume, soundboard sounds, YouTube videos
-with their volumes, plus an optional link and notes.
+**A scene is a saved board**: its tiles, where they are, how big, and what's in them (which
+playlist, soundboard, video or website, and their volumes and loop settings). The scenes bar
+shows one tab per scene.
 
-**Make one:** get things playing the way you like (a playlist, some sounds, a YouTube video),
-then click **＋ Save current as scene**. Give it a name, adjust anything you want, and click
-**Save scene**.
+**Everything saves by itself.** Whatever you change on the board (move a tile, add one, change
+a volume) is saved into the scene that's showing. **↶ Undo** (or `Ctrl+Z`) takes changes back.
 
-**Use it:** click the scene button, or press its number key. While a scene fades in, its button
-pulses; once it's active, it turns gold. Anything that changes fades out first, then the new
-scene fades in. If the playlist or video is the same, it keeps playing and only the volume changes.
+**Make one:** click **＋ Scene**, give it a name, and choose whether it starts as a copy of the
+current scene (the same tiles) or as an empty board. Then arrange its tiles.
+
+**Choose what plays when you switch to it (▶ auto):**
+- YouTube and playlist tiles have a **▶ auto** switch in their title bar. Gold = on.
+- Soundboard pads have a small **▶** in their corner (hover a pad to see it). Gold = this sound
+  starts with the scene.
+- Kenku plays one playlist at a time, so put ▶ auto on only one playlist per scene.
+
+**Switch:** click a scene tab or press its number key. The smart crossfade:
+- anything that's **in both scenes keeps playing** without a gap: the same YouTube video, the
+  same website or SoundPad (it isn't even reloaded), the Kenku playlist that's playing if the new
+  scene has a tile for it, and Kenku sounds whose soundboard is in the new scene;
+- **everything else fades out** (websites can't be faded, so they play until the fade is over);
+- the new scene's **▶ auto** items **fade in**. The music fades to the volume you last set in
+  that scene's *Now playing* tile.
+
+A small note at the bottom shows what's keeping, fading out and fading in. Clicking the scene
+that's already showing starts its ▶ auto items again.
 
 | Key | Does |
 |---|---|
-| `1` – `9` | Start scene 1 – 9 |
-| `0` | Fade everything out (same as **🔇 Fade out all**) |
+| `1` – `9` | Switch to scene 1 – 9 |
+| `0` | Fade everything out (same as **🔇 Fade out all**) – the tiles stay |
+| `Ctrl+Z` | Undo the last change to this scene's tiles |
 
 Keys only work while the dashboard has focus. After clicking inside a YouTube video or a
 website, click an empty part of the dashboard first.
 
-**Change one:** click **✎ Edit scenes**, then click a scene. You can rename it, change the
-colour, delete it, or move it left or right (that changes its number key). Click
-**✓ Done editing** when finished.
+**Scene settings:** click **▾** on the current scene's tab, or double-click (or right-click) any
+tab: name, colour, **fade time**, tags (for ✨ Vibe), notes (shown under the scenes bar),
+**Duplicate**, **Delete**, and ◀ ▶ to move it (that changes its number key).
+**⟲** in the top bar puts the default tiles back in the current scene (↶ Undo can bring yours back).
 
 Good to know:
-- **Fade (seconds)** is per scene. Soundboard sounds use their own fade settings from Kenku,
-  because Kenku's remote control can only start and stop them.
-- **"Leave the music as it is"** makes a scene that only changes sounds or YouTube, e.g. a
-  "Thunderstorm" scene layered over whatever music is playing.
-- **Link:** pick one of your saved links or a Tabletop Audio SoundPad from the menu, or paste
-  any address (e.g. your Custom SoundPad share link). While the scene is active, a button opens
-  it. Tick "open the link when the scene starts" to open it automatically. See
-  **Links and Tabletop Audio** below for where it opens.
-- Scenes are saved in the `data` folder (`data/scenes.json`). Copy that folder to back them up.
-  The previous version is always kept as `scenes.backup.json`.
+- Soundboard sounds use their own fade settings from Kenku, because Kenku's remote control can
+  only start and stop them.
+- Scenes are saved in the `data` folder (`data/boards.json`). Copy that folder to back them up.
+  The previous version is always kept as `boards.backup.json`.
+- Scenes made before the tile redesign are kept untouched in `data/scenes.json`, but the
+  dashboard doesn't use them any more. Your tiles from before became "Scene 1".
 
 ## ✨ Vibe: from a picture to sounds
 Click **✨ Vibe** in the scenes bar. Then either:
@@ -160,7 +174,7 @@ words however you like; the suggestions update as you type:
 - **Tabletop Audio SoundPads** that fit.
 - **Search for sounds** (Freesound) and **Search YouTube** buttons with ready-made searches.
 
-**Tags make matching work.** In the scene editor (**✎ Edit scenes** → click a scene) there's a
+**Tags make matching work.** In a scene's settings (double-click its tab) there's a
 **Tags** box. Type words that describe the scene, separated by commas, e.g.
 `tavern, cheerful, night`. Similar words count too: a scene tagged `inn` matches a picture of a
 tavern. Words in a scene's name and notes count half.
@@ -370,9 +384,11 @@ helper/       Node.js helper server (Express)
   server.js     dashboard files, /kenku proxy, /health, /api/*
   config.js     reads config.json
   check-kenku.js, mock-kenku.js
-  scenes.js     saves scenes to data/scenes.json
+  boards.js     saves scenes (= saved boards) to data/boards.json
+  scenes.js     the old scenes file from before the tile redesign (data/scenes.json)
+  tta-proxy.js  experimental Tabletop Audio pass-through
   sounds.js     Freesound search + download, ATTRIBUTION.csv
-  links.js      saved links (data/links.json) + Tabletop Audio SoundPad list
+  links.js      saved links (data/links.json) + Tabletop Audio SoundPad and track lists
   datafile.js   safe reading/writing of the files in data/
   update.js     update check + one-click update; updater.js swaps the files
   vibe.js       model files for ✨ Vibe (kept in data/models) + picture fetcher

@@ -32,15 +32,15 @@
     status.title = tip;
   }
 
-  // Tile types register themselves first, then the board builds the saved layout.
+  // Tile types register themselves first; then Scenes loads the scenes and has
+  // the board build the current one.
   KenkuPanel.init();
   YouTubePanel.init();
   EmbedPanel.init();
   Links.init();
-  Board.init();
+  Scenes.init();
   SoundsPanel.init();
   Settings.init();
-  Scenes.init();
   Vibe.init();
   window.addEventListener("settings-saved", checkHealth); // Kenku address may have changed
 

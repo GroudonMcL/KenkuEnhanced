@@ -21,26 +21,25 @@
       <button id="add-website" type="button" class="add-btn"><span class="dot dot-w"></span>＋ Website</button>
     </div>
     <button id="board-lock" type="button" class="icon-btn" title="Lock the layout">🔓</button>
-    <button id="board-reset" type="button" class="icon-btn" title="Put the default tiles back">⟲</button>
+    <button id="board-reset" type="button" class="icon-btn" title="Put the default tiles back in this scene">⟲</button>
     <button id="open-settings" type="button" class="icon-btn" title="Settings">⚙</button>
   </header>
 
-  <!-- Scenes bar: one click = playlist + sounds + YouTube + volumes, with fades.
-       Keys 1-9 trigger the first nine scenes, 0 fades everything out. -->
+  <!-- Scenes bar: one tab per scene. A scene is a saved board (its tiles and what's in them).
+       Keys 1-9 switch scenes, 0 fades everything out, Ctrl+Z undoes a layout change. -->
   <section id="scenes-bar" class="scenes-bar" aria-label="Scenes">
     <div id="scene-buttons" class="scene-buttons"></div>
-    <div class="scene-tools">
-      <button id="scene-capture" class="small" title="Make a new scene from what's playing right now">＋ Save as scene</button>
-      <button id="scene-edit-mode" class="small" title="Click a scene to edit it instead of playing it">✎ Edit scenes</button>
-      <button id="open-sounds" class="small" title="Search Freesound and download sounds">🔎 Find sounds</button>
-      <button id="vibe-open" class="small" title="Pick music and sounds from a picture or a few words">✨ Vibe</button>
-      <button id="scene-silence" class="small danger" title="Fade everything out (key 0)">🔇 Fade out all</button>
-    </div>
-    <div id="scene-info" class="scene-info" hidden>
-      <span id="scene-info-text"></span>
-      <button id="scene-link" class="small" hidden>↗ Open scene link</button>
-    </div>
+    <button id="scene-new" type="button" class="small" title="Make a new scene">＋ Scene</button>
+    <span class="spacer"></span>
+    <span id="scene-saved" class="scene-saved hint"></span>
+    <button id="scene-undo" type="button" class="small" title="Undo the last change to this scene's tiles (Ctrl+Z)" disabled>↶ Undo</button>
+    <button id="open-sounds" type="button" class="small" title="Search Freesound and download sounds">🔎 Find sounds</button>
+    <button id="vibe-open" type="button" class="small" title="Pick music and sounds from a picture or a few words">✨ Vibe</button>
+    <button id="scene-silence" type="button" class="small danger" title="Fade everything out (key 0)">🔇 Fade out all</button>
+    <div id="scene-info" class="scene-info" hidden><span id="scene-info-text"></span></div>
   </section>
+  <!-- What a scene switch is doing (scenes.js) -->
+  <div id="scene-toast" class="scene-toast" role="status" hidden></div>
   <div id="kenku-error" class="notice notice-error board-notice" hidden></div>
 
   <!-- The tiles. board.js (gridstack) lays them out; each tile type fills its body. -->
@@ -363,7 +362,7 @@
     </form>
   </dialog>
 
-  <!-- Scene editor (pop-up). scenes.js fills it in. -->
+  <!-- Scene settings (pop-up). scenes.js fills it in. The tiles themselves are edited on the board. -->
   <dialog id="scene-dialog" class="dialog">
     <form id="scene-form" method="dialog">
       <h2 id="scene-dialog-title">Scene</h2>
@@ -375,53 +374,28 @@
         <label class="narrow">Fade (seconds) <input id="sc-fade" type="number" min="0" max="20" step="0.5"></label>
       </div>
 
+      <fieldset id="sc-start">
+        <legend>Start with</legend>
+        <label class="check"><input type="radio" name="sc-start" value="copy" checked> <span id="sc-start-copy-label">A copy of this scene</span></label>
+        <label class="check"><input type="radio" name="sc-start" value="empty"> An empty board (just Now playing)</label>
+      </fieldset>
+
       <label>Tags <span class="hint">(words that describe it, e.g. tavern, night, cheerful – ✨ Vibe uses them)</span>
         <input id="sc-tags" type="text" maxlength="200" placeholder="tavern, night, cheerful" spellcheck="false"></label>
-
-      <fieldset>
-        <legend>🎵 Kenku music</legend>
-        <select id="sc-music"></select>
-        <div class="volume-row">
-          <span class="label">Volume</span>
-          <input id="sc-music-volume" type="range" min="0" max="100" step="1">
-          <span id="sc-music-volume-value" class="volume-value"></span>
-        </div>
-      </fieldset>
-
-      <fieldset>
-        <legend>🔔 Soundboard sounds</legend>
-        <p class="hint">Ticked sounds start with the scene. Volume, looping and fades come from each sound's settings in Kenku.</p>
-        <div id="sc-sounds" class="check-grid"></div>
-        <label class="check"><input id="sc-sounds-stop" type="checkbox"> Stop other sounds that are playing</label>
-      </fieldset>
-
-      <fieldset>
-        <legend>▶ YouTube</legend>
-        <div id="sc-youtube" class="sc-youtube"></div>
-        <div class="field-row">
-          <button type="button" id="sc-yt-add" class="small">＋ Add a YouTube link</button>
-          <button type="button" id="sc-yt-current" class="small">Use what's playing now</button>
-        </div>
-        <label class="check"><input id="sc-yt-stop" type="checkbox"> Pause other YouTube players</label>
-      </fieldset>
-
-      <fieldset>
-        <legend>Extras</legend>
-        <label>Link (e.g. a Tabletop Audio SoundPad or your Custom SoundPad share link)
-          <select id="sc-link-pick"></select>
-          <input id="sc-link" type="url" placeholder="https://…"></label>
-        <label class="check"><input id="sc-link-auto" type="checkbox"> Open the link when the scene starts</label>
-        <label>Notes (shown while the scene is active)
-          <textarea id="sc-notes" rows="2" maxlength="500"></textarea></label>
-      </fieldset>
+      <label>Notes <span class="hint">(shown under the scenes bar while the scene is on)</span>
+        <textarea id="sc-notes" rows="2" maxlength="500"></textarea></label>
+      <p class="hint">What plays: mark tiles <b>▶ auto</b> (YouTube, a playlist) and soundboard pads (the small ▶ in
+        a pad's corner) – they start when you switch to this scene. Anything that's also in the scene you
+        come from keeps playing; the rest fades out.</p>
 
       <div class="dialog-buttons">
         <button type="button" id="sc-delete" class="mid danger">Delete</button>
+        <button type="button" id="sc-duplicate" class="mid">Duplicate</button>
         <button type="button" id="sc-left" class="mid" title="Move earlier">◀</button>
         <button type="button" id="sc-right" class="mid" title="Move later">▶</button>
         <span class="spacer"></span>
         <button type="button" id="sc-cancel" class="mid">Cancel</button>
-        <button type="submit" class="mid primary">Save scene</button>
+        <button type="submit" id="sc-save" class="mid primary">Save</button>
       </div>
     </form>
   </dialog>

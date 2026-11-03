@@ -290,7 +290,7 @@ const Vibe = (() => {
       .slice(0, 6);
     const sceneRow = section("Your scenes");
     if (!scenes.length) {
-      sceneRow.innerHTML = '<span class="hint">No scene matches yet. Give your scenes tags (✎ Edit scenes), or make one below.</span>';
+      sceneRow.innerHTML = '<span class="hint">No scene matches yet. Give your scenes tags (double-click a scene tab), or make one below.</span>';
     }
     for (const { s, hits } of scenes) {
       const b = button(`▶ ${s.name}`, () => {

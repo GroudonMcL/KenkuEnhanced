@@ -109,7 +109,10 @@ const KenkuPanel = (() => {
   // ===========================================================================
   // Tile: Now playing
   // ===========================================================================
-  function createNowPlaying(tile) {
+  // config.volume (0-100) = the music volume you last set here. Each scene keeps
+  // its own, and switching to the scene fades Kenku's music to it.
+  function createNowPlaying(tile, config) {
+    let sceneVolume = config.volume ?? null;
     tile.setTitle("Now playing");
     tile.body.innerHTML = `
       <div class="np">
@@ -203,12 +206,18 @@ const KenkuPanel = (() => {
     });
     slider.addEventListener("change", () => {
       sendVolume();
+      sceneVolume = Number(slider.value);
+      tile.changed();
       setTimeout(() => (draggingVolume = false), 500);
     });
 
     const off = on("playback", render);
     render();
-    return { save: () => ({}), destroy: off };
+    return {
+      save: () => (sceneVolume == null ? {} : { volume: sceneVolume }),
+      apply: (c) => (sceneVolume = c.volume ?? null),
+      destroy: off,
+    };
   }
 
   // ===========================================================================
@@ -310,10 +319,12 @@ const KenkuPanel = (() => {
   // ===========================================================================
   // Tile: Soundboard
   // ===========================================================================
+  // config.autoSounds = sounds marked ▶ auto: they start when you switch to the scene.
   function createSoundboard(tile, config) {
     let id = config.id || null;
     let autoFirst = !!config.autoFirst;
     let choosing = false;
+    let autoSounds = new Set(config.autoSounds || []);
 
     tile.addAction("■", "Stop this soundboard's sounds", async () => {
       const board = boardById(id);
@@ -356,6 +367,16 @@ const KenkuPanel = (() => {
         b.append(el("small", "pad-sub", s.loop ? "↻ loop" : "one-shot"));
         b.title = s.title + (s.loop ? " (loops)" : "");
         b.onclick = () => command(playingSoundIds.has(sid) ? "/v1/soundboard/stop" : "/v1/soundboard/play", "PUT", { id: sid });
+        // Small ▶ in the corner: start this sound with the scene
+        const auto = el("span", "pad-auto", "▶");
+        auto.setAttribute("role", "switch");
+        auto.onclick = (e) => {
+          e.stopPropagation();
+          autoSounds.has(sid) ? autoSounds.delete(sid) : autoSounds.add(sid);
+          tile.changed();
+          highlight();
+        };
+        b.append(auto);
         pads.append(b);
       }
       if (!board.sounds.length) pads.append(el("div", "hint", "This soundboard is empty."));
@@ -367,16 +388,26 @@ const KenkuPanel = (() => {
       let n = 0;
       tile.body.querySelectorAll(".pad").forEach((b) => {
         const onNow = playingSoundIds.has(b.dataset.id);
+        const auto = autoSounds.has(b.dataset.id);
         b.classList.toggle("on", onNow);
+        b.classList.toggle("auto", auto);
+        const a = b.querySelector(".pad-auto");
+        a.setAttribute("aria-checked", auto);
+        a.title = auto ? "▶ auto: starts with this scene (click to turn off)" : "Click to start this sound with the scene (▶ auto)";
         if (onNow) n++;
       });
-      tile.setStatus(n ? `● ${n} playing` : "", "playing");
+      const nAuto = [...autoSounds].filter((s) => boardById(id)?.sounds.includes(s)).length;
+      tile.setStatus([n ? `● ${n} playing` : "", nAuto ? `▶ ${nAuto} auto` : ""].filter(Boolean).join(" · "), "playing");
     }
 
     const offs = [on("library", render), on("sounds", highlight)];
     render();
     return {
-      save: () => ({ id, ...(autoFirst ? { autoFirst } : {}) }),
+      save: () => ({ id, ...(autoFirst ? { autoFirst } : {}), ...(autoSounds.size ? { autoSounds: [...autoSounds] } : {}) }),
+      apply: (c) => {
+        autoSounds = new Set(c.autoSounds || []);
+        highlight();
+      },
       destroy: () => offs.forEach((f) => f()),
       boardId: () => id,
     };
@@ -482,9 +513,13 @@ const KenkuPanel = (() => {
   // ===========================================================================
   function init() {
     // Heights are in 20px rows.
-    Board.register("nowplaying", { badge: "Kenku", badgeClass: "k", fitContent: true, size: { w: 7, h: 4, minW: 3, minH: 3 }, create: createNowPlaying });
-    Board.register("playlist", { badge: "Playlist", badgeClass: "k", size: { w: 3, h: 14, minW: 2, minH: 5 }, create: createPlaylist });
-    Board.register("soundboard", { badge: "Soundboard", badgeClass: "k", size: { w: 4, h: 10, minW: 2, minH: 5 }, create: createSoundboard });
+    // key: tiles with the same key in two scenes are kept (not rebuilt) when switching.
+    Board.register("nowplaying", { badge: "Kenku", badgeClass: "k", fitContent: true, size: { w: 7, h: 4, minW: 3, minH: 3 },
+      key: () => "", create: createNowPlaying });
+    Board.register("playlist", { badge: "Playlist", badgeClass: "k", autoable: true, size: { w: 3, h: 14, minW: 2, minH: 5 },
+      key: (c) => c.id || "", create: createPlaylist });
+    Board.register("soundboard", { badge: "Soundboard", badgeClass: "k", size: { w: 4, h: 10, minW: 2, minH: 5 },
+      key: (c) => c.id || "", create: createSoundboard });
 
     $("add-kenku").addEventListener("click", openAddDialog);
     $("kenku-add-close").addEventListener("click", () => $("kenku-add-dialog").close());

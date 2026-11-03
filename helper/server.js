@@ -11,7 +11,8 @@
 //   /api/frame-check?url=... → does a website allow itself to be shown in an iframe?
 //   /api/youtube/search?q=...&type=video → YouTube search (needs apiKeys.youtube)
 //   /api/settings → read / save settings (the dashboard's Settings pane)
-//   /api/scenes   → read / save your scenes (stored in data/scenes.json)
+//   /api/boards   → your scenes = saved tile layouts (data/boards.json, helper/boards.js)
+//   /api/scenes   → the old scenes from before the tile redesign (data/scenes.json, backup only)
 //   /api/sounds/* → Freesound search + download to your downloads folder (helper/sounds.js)
 //   /api/links    → your saved links + the Tabletop Audio SoundPad list (helper/links.js)
 //   /models/*, /api/vibe/* → picture model files + picture fetcher for ✨ Vibe (helper/vibe.js)
@@ -358,7 +359,8 @@ app.post("/api/settings/test-youtube", async (req, res) => {
 // ---------------------------------------------------------------------------
 // 7. Scenes (stored in data/scenes.json – see helper/scenes.js)
 // ---------------------------------------------------------------------------
-app.use("/api/scenes", require("./scenes")(jsonOnly));
+app.use("/api/scenes", require("./scenes")(jsonOnly)); // old scenes (kept as a backup only)
+app.use("/api/boards", require("./boards")(jsonOnly));  // scenes = saved boards (helper/boards.js)
 
 // ---------------------------------------------------------------------------
 // 8. Sound search + download (Freesound – see helper/sounds.js)
