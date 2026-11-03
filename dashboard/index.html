@@ -8,36 +8,38 @@
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-  <!-- Top bar: status light, "add a tile" buttons, lock, settings -->
+  <!-- Top bar (one row): status light, scene tabs, tools, "add a tile" buttons, lock, settings.
+       A scene is a saved board (its tiles and what's in them).
+       Keys 1-9 switch scenes, 0 fades everything out, Ctrl+Z undoes a layout change. -->
   <header class="topbar">
-    <h1>Kenku Dashboard</h1>
+    <div class="brand"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10v4M8 6v12M12 9v6M16 4v16M20 10v4"/></svg><h1>Kenku Dashboard</h1></div>
     <span id="kenku-status" class="status status-unknown" title="Kenku Remote connection">Kenku: checking…</span>
     <button id="update-badge" class="update-badge" hidden>Update available</button>
-    <span class="spacer"></span>
-    <div class="add-buttons" aria-label="Add a tile">
-      <span class="add-label">Add</span>
-      <button id="add-kenku" type="button" class="add-btn"><span class="dot dot-k"></span>＋ Kenku</button>
-      <button id="add-youtube" type="button" class="add-btn"><span class="dot dot-y"></span>＋ YouTube</button>
-      <button id="add-website" type="button" class="add-btn"><span class="dot dot-w"></span>＋ Website</button>
-    </div>
-    <button id="board-lock" type="button" class="icon-btn" title="Lock the layout">🔓</button>
-    <button id="board-reset" type="button" class="icon-btn" title="Put the default tiles back in this scene">⟲</button>
-    <button id="open-settings" type="button" class="icon-btn" title="Settings">⚙</button>
-  </header>
-
-  <!-- Scenes bar: one tab per scene. A scene is a saved board (its tiles and what's in them).
-       Keys 1-9 switch scenes, 0 fades everything out, Ctrl+Z undoes a layout change. -->
-  <section id="scenes-bar" class="scenes-bar" aria-label="Scenes">
-    <div id="scene-buttons" class="scene-buttons"></div>
-    <button id="scene-new" type="button" class="small" title="Make a new scene">＋ Scene</button>
-    <span class="spacer"></span>
+    <nav id="scenes-bar" class="scenes-bar" aria-label="Scenes">
+      <div id="scene-buttons" class="scene-buttons"></div>
+      <button id="scene-new" type="button" class="ghost small" title="Make a new scene">＋ Scene</button>
+    </nav>
     <span id="scene-saved" class="scene-saved hint"></span>
-    <button id="scene-undo" type="button" class="small" title="Undo the last change to this scene's tiles (Ctrl+Z)" disabled>↶ Undo</button>
-    <button id="open-sounds" type="button" class="small" title="Search Freesound and download sounds">🔎 Find sounds</button>
-    <button id="vibe-open" type="button" class="small" title="Pick music and sounds from a picture or a few words">✨ Vibe</button>
-    <button id="scene-silence" type="button" class="small danger" title="Fade everything out (key 0)">🔇 Fade out all</button>
+    <span class="spacer"></span>
+    <div class="tools">
+      <button id="scene-undo" type="button" class="icon-btn" title="Undo the last change to this scene's tiles (Ctrl+Z)" aria-label="Undo" disabled><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></button>
+      <button id="open-sounds" type="button" class="small" title="Search Freesound and download sounds"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>Find sounds</button>
+      <button id="vibe-open" type="button" class="small" title="Pick music and sounds from a picture or a few words"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 3 12.8 8.2 18 10l-5.2 1.8L11 17l-1.8-5.2L4 10l5.2-1.8z"/><path d="M19 14v6M16 17h6"/></svg>Vibe</button>
+      <button id="scene-silence" type="button" class="small danger" title="Fade everything out (key 0)"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="m22 9-6 6M16 9l6 6"/></svg>Fade out all</button>
+    </div>
+    <div class="add-buttons" role="group" aria-label="Add a tile">
+      <span class="add-label">Add</span>
+      <button id="add-kenku" type="button" class="add-btn"><span class="dot dot-k"></span>Kenku</button>
+      <button id="add-youtube" type="button" class="add-btn"><span class="dot dot-y"></span>YouTube</button>
+      <button id="add-website" type="button" class="add-btn"><span class="dot dot-w"></span>Website</button>
+    </div>
+    <div class="tools">
+      <button id="board-lock" type="button" class="icon-btn" title="Lock the layout"></button>
+      <button id="board-reset" type="button" class="icon-btn" title="Put the default tiles back in this scene" aria-label="Reset tiles"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></button>
+      <button id="open-settings" type="button" class="icon-btn" title="Settings" aria-label="Settings"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></svg></button>
+    </div>
     <div id="scene-info" class="scene-info" hidden><span id="scene-info-text"></span></div>
-  </section>
+  </header>
   <!-- What a scene switch is doing (scenes.js) -->
   <div id="scene-toast" class="scene-toast" role="status" hidden></div>
   <div id="kenku-error" class="notice notice-error board-notice" hidden></div>
@@ -57,9 +59,9 @@
       <div class="notice yt-message" hidden></div>
       <div class="yt-frame"><div class="yt-player"></div></div>
       <div class="tile-controls">
-        <button type="button" class="small yt-playpause" title="Play / pause">▶</button>
-        <button type="button" class="small yt-loop" title="Loop">🔁</button>
-        <span class="vol-icon">🔊</span>
+        <button type="button" class="small yt-playpause" title="Play / pause"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" stroke="none" d="M7 4.5v15a1 1 0 0 0 1.5.86l12.5-7.5a1 1 0 0 0 0-1.72L8.5 3.64A1 1 0 0 0 7 4.5z"/></svg></button>
+        <button type="button" class="small yt-loop" title="Loop"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m17 2 3 3-3 3"/><path d="M4 11V9a4 4 0 0 1 4-4h12"/><path d="m7 22-3-3 3-3"/><path d="M20 13v2a4 4 0 0 1-4 4H4"/></svg></button>
+        <span class="vol-icon"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg></span>
         <input class="yt-volume" type="range" min="0" max="100" step="1" aria-label="Volume">
         <span class="volume-value yt-volume-value"></span>
       </div>
@@ -380,7 +382,7 @@
 
       <label>Tags <span class="hint">(words that describe it, e.g. tavern, night, cheerful – ✨ Vibe uses them)</span>
         <input id="sc-tags" type="text" maxlength="200" placeholder="tavern, night, cheerful" spellcheck="false"></label>
-      <label>Notes <span class="hint">(shown under the scenes bar while the scene is on)</span>
+      <label>Notes <span class="hint">(shown under the top bar while the scene is on)</span>
         <textarea id="sc-notes" rows="2" maxlength="500"></textarea></label>
       <p class="hint">What plays: mark tiles <b>▶ auto</b> (YouTube, a playlist) and soundboard pads (the small ▶ in
         a pad's corner) – they start when you switch to this scene. Anything that's also in the scene you
@@ -400,6 +402,7 @@
 
   <!-- Plain scripts, loaded in order. No build step needed. -->
   <script src="js/storage.js"></script>
+  <script src="js/icons.js"></script>
   <script src="vendor/gridstack/gridstack-all.js"></script>
   <script src="js/board.js"></script>
   <script src="js/kenku-panel.js"></script>

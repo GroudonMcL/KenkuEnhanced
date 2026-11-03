@@ -184,6 +184,7 @@ const SoundsPanel = (() => {
   function setPreviewVolume(v) {
     audio.volume = v / 100;
     $("snd-preview-volume").value = v;
+    Icons.paintRange($("snd-preview-volume"));
     $("snd-preview-volume-value").textContent = v + "%";
   }
 

@@ -30,8 +30,8 @@ Everything you change is saved by itself (into the scene that's showing).
   **✕** closes it.
 - Tiles name themselves after what they show (the video, playlist, soundboard or page).
   **Double-click a name** to give it your own; clear it to go back to the automatic name.
-- **🔒** in the top bar locks the layout so nothing moves by accident during a session.
-  **⟲** puts the default tiles back in the current scene.
+- The **lock** button (padlock, top right) locks the layout so nothing moves by accident during a
+  session. The **reset** button (circular arrow) puts the default tiles back in the current scene.
 - On a narrow screen (a tablet or phone) the tiles stack in one column.
 
 ```
@@ -115,7 +115,7 @@ Run it in a second window, with the real Kenku closed, because both use port 333
 
 ## Scenes
 **A scene is a saved board**: its tiles, where they are, how big, and what's in them (which
-playlist, soundboard, video or website, and their volumes and loop settings). The scenes bar
+playlist, soundboard, video or website, and their volumes and loop settings). The top bar
 shows one tab per scene.
 
 **Everything saves by itself.** Whatever you change on the board (move a tile, add one, change
@@ -154,9 +154,9 @@ Keys only work while the dashboard has focus. After clicking inside a YouTube vi
 website, click an empty part of the dashboard first.
 
 **Scene settings:** click **▾** on the current scene's tab, or double-click (or right-click) any
-tab: name, colour, **fade time**, tags (for ✨ Vibe), notes (shown under the scenes bar),
+tab: name, colour, **fade time**, tags (for ✨ Vibe), notes (shown under the top bar),
 **Duplicate**, **Delete**, and ◀ ▶ to move it (that changes its number key).
-**⟲** in the top bar puts the default tiles back in the current scene (↶ Undo can bring yours back).
+The **reset** button (circular arrow) in the top bar puts the default tiles back in the current scene (↶ Undo can bring yours back).
 
 Good to know:
 - Soundboard sounds use their own fade settings from Kenku, because Kenku's remote control can
@@ -167,7 +167,7 @@ Good to know:
   dashboard doesn't use them any more. Your tiles from before became "Scene 1".
 
 ## ✨ Vibe: from a picture to sounds
-Click **✨ Vibe** in the scenes bar. Then either:
+Click **Vibe** in the top bar. Then either:
 - **give it a picture**: drop it on the box, paste it with **Ctrl+V** (e.g. after copying a
   picture in your browser or a screenshot), click **🖼 Choose a picture…**, or paste a picture's
   web address (right-click a picture on a website → *Copy image address*);
@@ -274,7 +274,7 @@ Good to know:
 - Links are saved in `data/links.json` (the previous version is kept as `links.backup.json`).
 
 ## Settings
-Click **⚙ Settings** at the top right of the dashboard to change the Kenku address and port,
+Click **Settings** (the sliders icon at the top right) of the dashboard to change the Kenku address and port,
 your API keys, the downloads folder and network access. Click **Save** and the changes apply
 straight away; changing the dashboard port or network access needs a helper restart.
 
@@ -314,7 +314,7 @@ same search repeated within 30 minutes is free, because the helper remembers the
 Search only shows videos that allow embedding.
 
 ## Sound search (optional, free)
-**🔎 Find sounds** (in the scenes bar) searches [Freesound](https://freesound.org), a huge library of free sound
+**Find sounds** (in the top bar) searches [Freesound](https://freesound.org), a huge library of free sound
 effects and ambiences shared under Creative Commons licences. Choose a length and sort order,
 click a waveform to preview from that point, and **⬇ Download** saves the sound into your
 downloads folder (optionally a subfolder) with its credits in `ATTRIBUTION.csv`.

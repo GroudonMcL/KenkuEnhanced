@@ -35,8 +35,8 @@ const Board = (() => {
   let changeHandler = () => {};
 
   const CELL = 20;      // row height in px – small, so tile heights can be fine-tuned
-  const GAP = 4;        // gridstack margin around each tile (so 8px between tiles)
-  const COLLAPSED = 2;  // rows of a collapsed tile: 2 × 20px − margins = the 32px title bar
+  const GAP = 3;        // gridstack margin around each tile (so 6px between tiles)
+  const COLLAPSED = 2;  // rows of a collapsed tile: 2 × 20px − margins = 34px, just the title bar
 
   function register(type, def) {
     TYPES[type] = def;
@@ -162,7 +162,8 @@ const Board = (() => {
       const b = document.createElement("button");
       b.type = "button";
       b.className = "tile-btn";
-      b.textContent = label;
+      if (Icons.has(label)) Icons.set(b, label); // a line icon by name (see icons.js)
+      else b.textContent = label;
       b.title = title;
       b.addEventListener("click", onClick);
       tile.actions.appendChild(b);
@@ -382,7 +383,9 @@ const Board = (() => {
     grid?.setStatic(on);
     document.body.classList.toggle("board-locked", on);
     const b = $("board-lock");
-    b.textContent = on ? "🔒" : "🔓";
+    b.innerHTML = `<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/>` +
+      (on ? `<path d="M8 11V7a4 4 0 0 1 8 0v4"/>` : `<path d="M8 11V7a4 4 0 0 1 7.6-1.8"/>`) + `</svg>`;
+    b.setAttribute("aria-label", on ? "Unlock the layout" : "Lock the layout");
     b.classList.toggle("on", on);
     b.title = on ? "Layout locked – click to allow moving and resizing tiles" : "Lock the layout (so tiles can't be moved by accident)";
   }
