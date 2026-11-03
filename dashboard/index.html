@@ -158,7 +158,7 @@
         <div id="web-add-list" class="pick-cards"></div>
         <p id="web-add-hint" class="hint">Tabletop Audio is free and fan-supported:
           <a href="https://www.patreon.com/tabletopaudio" target="_blank" rel="noopener">support them on Patreon</a>.
-          Its pages show inside a tile only with ⚙ Settings → Experimental → pass-through.</p>
+          Its pages show inside a tile only with its pass-through on (⚙ Settings → Experimental).</p>
       </div>
     </div>
     <div class="picker-foot">
@@ -276,11 +276,12 @@
       </fieldset>
 
       <fieldset>
-        <legend>Experimental</legend>
-        <label class="check"><input id="set-tta-proxy" type="checkbox"> Show Tabletop Audio inside Website tiles</label>
-        <p class="hint">Tabletop Audio doesn't allow its site to be embedded, so this passes it (and its sounds)
-          through the helper on this PC. For your own table only, please. It may stop working if Tabletop Audio
-          changes their site; untick it to go back to new tabs.</p>
+        <legend>Experimental: sites that refuse to be embedded</legend>
+        <p class="hint">These sites don't allow being shown inside other pages. Ticked ones are passed
+          through the helper on this PC, so they show inside Website tiles (with their sounds). For your own
+          table only, please. A site can stop working whenever it changes; untick it to go back to a
+          "open in a Kenku tab" button. <b>📱</b> asks the site for its phone layout, which can fit small tiles better.</p>
+        <div id="set-pass-sites" class="pass-sites"></div>
       </fieldset>
 
       <div class="dialog-buttons">

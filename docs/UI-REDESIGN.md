@@ -101,5 +101,15 @@ Tested 2026-11-03:
    crossfade. `Board.applyLayout()` keeps tiles with the same key (same video / page / playlist /
    soundboard) so they keep playing; leaving tiles are detached (hidden, not moved in the DOM),
    faded, then disposed. Music volume per scene = the Now playing tile's last-set volume.
-4. General pass-through for myNoise / Rainy Mood (+ try Ambient-Mixer), mobile UA, launcher tile.
+4. ✅ **Built.** `helper/pass-through.js` replaces `tta-proxy.js`: one port per site (+1 Tabletop
+   Audio, +2 myNoise, +3 Rainy Mood, +4 Ambient-Mixer), each switched on separately in ⚙ Settings
+   (`experimental.passThrough`, old `ttaProxy` carried over). Each site's sound hosts go through
+   `/_m<n>/` with the site's Origin (sounds.tabletopaudio.com, mynoise.world and
+   xml.ambient-mixer.com refuse other origins); Rainy Mood's media plays from anywhere. Addresses are
+   rewritten in plain and JSON-escaped form. Non-GET requests are answered 204 and never forwarded.
+   Pass-through iframes are sandboxed without top-navigation (stops frame-busting). `/api/pass-check`
+   runs first; a refusal → launcher tile with the reason. Tested: all four load; sound files arrive
+   for myNoise (ogg via mynoise.world), Ambient-Mixer (mix XML + 8 MP3s), Rainy Mood, Tabletop Audio.
+   - Mobile version (mobile User-Agent per site): makes little difference for these four (only
+     Rainy Mood changes slightly), so Website tiles also got a 🔍 zoom (100/85/70/55 %).
 5. Find sounds + Vibe as dialogs; README/screenshots.

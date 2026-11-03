@@ -288,6 +288,12 @@ body.dragging { user-select: none; }
 .web-message { margin: 6px; flex: none; }
 .web-frame { flex: 1; min-height: 0; background: #fff; }
 .web-frame iframe { width: 100%; height: 100%; border: 0; display: block; }
+/* Zoomed out: the page is laid out bigger, then shrunk to fit the tile */
+.web-frame { overflow: hidden; }
+.web-frame iframe.zoomed {
+  width: calc(100% / var(--zoom)); height: calc(100% / var(--zoom));
+  transform: scale(var(--zoom)); transform-origin: 0 0;
+}
 .web-launch {
   flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
   text-align: center; padding: 14px; background: linear-gradient(160deg, #172a3d55, transparent);
@@ -329,6 +335,13 @@ body.dragging { user-select: none; }
   background: var(--panel); padding-top: 8px; }
 .dialog .spacer { flex: 1; }
 .dialog textarea { resize: vertical; }
+
+/* Settings: pass-through sites */
+.pass-sites { display: flex; flex-direction: column; gap: 4px; }
+.pass-site { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.dialog .pass-site label.check { flex: 0 0 auto; }
+.pass-site .mobile { color: var(--muted); font-size: .88rem; }
+.pass-site .hint { margin-left: auto; }
 
 /* "+ Add" pickers */
 .picker-dialog { width: min(760px, calc(100vw - 32px)); }

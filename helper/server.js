@@ -16,7 +16,9 @@
 //   /api/sounds/* → Freesound search + download to your downloads folder (helper/sounds.js)
 //   /api/links    → your saved links + the Tabletop Audio SoundPad list (helper/links.js)
 //   /models/*, /api/vibe/* → picture model files + picture fetcher for ✨ Vibe (helper/vibe.js)
-//   port+1       → EXPERIMENTAL Tabletop Audio pass-through, off by default (helper/tta-proxy.js)
+//   port+1…+4    → EXPERIMENTAL pass-through for Tabletop Audio, myNoise, Rainy Mood,
+//                  Ambient-Mixer – each off by default (helper/pass-through.js)
+//   /api/pass-check?url=... → does a pass-through site answer the helper?
 
 const path = require("path");
 const express = require("express");
@@ -145,6 +147,13 @@ async function readTitle(r) {
   return text.slice(0, 120) || null;
 }
 
+// Before a Website tile loads a page through the pass-through: will the site answer?
+app.get("/api/pass-check", async (req, res) => {
+  const site = passThrough.siteFor(String(req.query.url || ""));
+  if (!site || !passOn(site.id)) return res.json({ ok: false, reason: "The pass-through is off for this site." });
+  res.json(await passThrough.check(String(req.query.url), passMobile(site.id)));
+});
+
 app.get("/api/frame-check", async (req, res) => {
   let url;
   try {
@@ -253,13 +262,13 @@ const jsonOnly = [
 const HOST = config.host || "127.0.0.1";
 const RUNNING = { port: config.port, host: HOST };
 
-// Experimental Tabletop Audio pass-through: its own port (see helper/tta-proxy.js)
-const ttaProxy = require("./tta-proxy");
-const TTA_PORT = config.port + 1;
-function startTtaProxyIfOn() {
-  if (config.experimental.ttaProxy) {
-    ttaProxy.start({ port: TTA_PORT, host: HOST, isEnabled: () => config.experimental.ttaProxy });
-  }
+// Experimental pass-through: one port per site (see helper/pass-through.js)
+const passThrough = require("./pass-through");
+const PASS_BASE = config.port;
+const passOn = (id) => !!config.experimental.passThrough[id];
+const passMobile = (id) => !!config.experimental.mobile[id];
+function startPassThrough() {
+  passThrough.startEnabled({ basePort: PASS_BASE, host: HOST, isEnabled: passOn, isMobile: passMobile });
 }
 
 // "AIzaSy...2fbQ" → "…2fbQ". The full key is never sent to the browser.
@@ -276,7 +285,11 @@ function settingsForBrowser() {
     downloadsFolder: config.downloadsFolder,
     downloadsFolderExists: fs.existsSync(config.downloadsFolder),
     apiKeys: Object.fromEntries(Object.entries(config.apiKeys).map(([k, v]) => [k, keyHint(v)])),
-    experimental: { ...config.experimental, ttaProxyPort: TTA_PORT },
+    experimental: {
+      passThrough: { ...config.experimental.passThrough },
+      mobile: { ...config.experimental.mobile },
+      sites: passThrough.list(PASS_BASE), // [{ id, name, port, hosts }]
+    },
     configError: config.loadError,
     // true when saved settings differ from what's running → restart the helper
     restartNeeded: config.port !== RUNNING.port || (config.host || "127.0.0.1") !== RUNNING.host,
@@ -325,8 +338,13 @@ app.put("/api/settings", jsonOnly, (req, res) => {
     }
   }
 
-  if (b.experimental && typeof b.experimental.ttaProxy === "boolean") {
-    changes.experimental = { ttaProxy: b.experimental.ttaProxy };
+  if (b.experimental) {
+    const ids = passThrough.SITES.map((x) => x.id);
+    const pick = (o) => Object.fromEntries(ids.filter((id) => typeof o?.[id] === "boolean").map((id) => [id, o[id]]));
+    changes.experimental = {
+      passThrough: { ...config.experimental.passThrough, ...pick(b.experimental.passThrough) },
+      mobile: { ...config.experimental.mobile, ...pick(b.experimental.mobile) },
+    };
   }
 
   if (errors.length) return res.status(400).json({ error: errors.join(" ") });
@@ -335,7 +353,7 @@ app.put("/api/settings", jsonOnly, (req, res) => {
   } catch (err) {
     return res.status(500).json({ error: `Couldn't save config.json: ${err.message}` });
   }
-  startTtaProxyIfOn();
+  startPassThrough();
   if (changes.apiKeys?.youtube !== undefined) searchCache.clear();
   if (changes.apiKeys?.freesound !== undefined) soundsRouter.clearCache();
   res.json(settingsForBrowser());
@@ -396,7 +414,7 @@ app.listen(config.port, HOST, () => {
   console.log("  KenkuEnhanced helper is running.");
   console.log(`  Dashboard:  http://localhost:${config.port}`);
   console.log(`  Kenku API:  ${config.kenkuUrl}  (proxied at /kenku)`);
-  startTtaProxyIfOn();
+  startPassThrough();
   console.log("  Leave this window open while you play. Close it (or Ctrl+C) to stop.");
   console.log("");
 }).on("error", (err) => {

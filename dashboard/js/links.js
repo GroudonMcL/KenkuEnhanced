@@ -30,7 +30,8 @@ const Links = (() => {
   const CUSTOM_SP = TTA + "custom_sp.html";
 
   // Other ambience sites. `embeds: false` = the site refuses to be shown inside
-  // other pages (tested 2026-11-03), so its tile shows an "open" button for now.
+  // other pages (tested 2026-11-03), so its tile shows an "open in a Kenku tab"
+  // button – unless its pass-through is on (⚙ Settings → Experimental).
   const PRESETS = [
     { id: "mynoise", icon: "🎚", name: "myNoise", url: "https://mynoise.net/noiseMachines.php",
       description: "Noise and ambience generators with sliders – rain, forest, dungeon, spaceship…", embeds: false },

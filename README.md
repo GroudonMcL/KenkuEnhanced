@@ -224,15 +224,25 @@ Mood refuse to be embedded) still get a tile. It shows an **↗ Open in a Kenku 
 just as good for sound, because Kenku sends the sound of every tab to Discord. Switch back to the
 dashboard tab to keep using it.
 
-**🧪 Experimental: SoundPads inside Website tiles.** In **⚙ Settings → Experimental**, tick
-**Show Tabletop Audio inside Website tiles** and click **Save** (no restart needed). The helper
-then passes Tabletop Audio pages *and their sounds* through this PC (on the dashboard's port + 1,
-e.g. `http://localhost:4001`) and leaves out the "don't embed me" header, so SoundPads load right
-in a tile, and the **🎲 SoundPads** buttons say **＋ Add tile**. Please keep in mind:
-- It works around a choice Tabletop Audio made on purpose (no embedding, and their sound server
-  only serves their own site). Use it for your own table only and don't share the address.
-- It can stop working whenever they change their site. Untick it to go back to new tabs.
-- Nothing is downloaded or stored: every sound still comes live from Tabletop Audio.
+**🧪 Experimental: show those sites inside tiles anyway.** In **⚙ Settings → Experimental**, tick
+the sites you want (**Tabletop Audio**, **myNoise**, **Rainy Mood**, **Ambient-Mixer**) and click
+**Save** (no restart needed). The helper then passes those sites *and their sound servers*
+through this PC, each on its own port (dashboard port + 1 to + 4, e.g. `http://localhost:4001`),
+and leaves out the "don't embed me" header, so they load right in a Website tile (the tile says
+**🧪 pass-through**). Please keep in mind:
+- It works around a choice these sites made on purpose (no embedding, and some sound servers only
+  serve their own site). Use it for your own table only and don't share the addresses.
+- It can stop working whenever a site changes. If a site refuses the helper, its tile shows the
+  reason and an **↗ Open in a Kenku tab** button instead. Untick a site to go back to that button.
+- Nothing is downloaded or stored: every sound still comes live from the site. The helper never
+  sends anything *to* the sites (no logins, forms or analytics).
+- **📱 mobile version** asks a site for its phone layout. Most of these sites look the same either
+  way (they already adapt to a narrow tile); Rainy Mood changes a little.
+
+**🔍 Zoom** (in any Website tile's title bar) shows the page smaller – 85, 70 or 55 % – so more
+of it fits in the tile. Each tile remembers its zoom.
+
+![Ambient-Mixer, myNoise and Rainy Mood inside tiles](docs/screenshots/passthrough-sites.png)
 
 ![A SoundPad playing inside the dashboard](docs/screenshots/tta-passthrough-2-playing.png)
 
@@ -386,7 +396,7 @@ helper/       Node.js helper server (Express)
   check-kenku.js, mock-kenku.js
   boards.js     saves scenes (= saved boards) to data/boards.json
   scenes.js     the old scenes file from before the tile redesign (data/scenes.json)
-  tta-proxy.js  experimental Tabletop Audio pass-through
+  pass-through.js  experimental pass-through (Tabletop Audio, myNoise, Rainy Mood, Ambient-Mixer)
   sounds.js     Freesound search + download, ATTRIBUTION.csv
   links.js      saved links (data/links.json) + Tabletop Audio SoundPad and track lists
   datafile.js   safe reading/writing of the files in data/

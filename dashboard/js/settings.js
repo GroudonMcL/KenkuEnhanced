@@ -28,7 +28,23 @@ const Settings = (() => {
       : "This folder doesn't exist yet.";
     $("set-port").value = s.port;
     $("set-lan").checked = s.lanAccess;
-    $("set-tta-proxy").checked = !!s.experimental?.ttaProxy;
+    // One row per pass-through site: [✓] myNoise  [ ] 📱 mobile version
+    const box = $("set-pass-sites");
+    box.innerHTML = "";
+    for (const site of s.experimental?.sites || []) {
+      const row = document.createElement("div");
+      row.className = "pass-site";
+      row.dataset.id = site.id;
+      row.innerHTML = `
+        <label class="check"><input type="checkbox" class="pass-on"> <span></span></label>
+        <label class="check mobile"><input type="checkbox" class="pass-mobile"> 📱 mobile version</label>
+        <span class="hint"></span>`;
+      row.querySelector(".pass-on + span").textContent = `Show ${site.name} inside tiles`;
+      row.querySelector(".hint").textContent = site.hosts[0];
+      row.querySelector(".pass-on").checked = !!s.experimental.passThrough?.[site.id];
+      row.querySelector(".pass-mobile").checked = !!s.experimental.mobile?.[site.id];
+      box.append(row);
+    }
 
     document.querySelectorAll(".key-row").forEach((row) => {
       const info = s.apiKeys[row.dataset.key] || { set: false };
@@ -64,7 +80,10 @@ const Settings = (() => {
       createFolder: $("set-create-folder").checked,
       port: Number($("set-port").value),
       lanAccess: $("set-lan").checked,
-      experimental: { ttaProxy: $("set-tta-proxy").checked },
+      experimental: {
+        passThrough: Object.fromEntries([...document.querySelectorAll(".pass-site")].map((r) => [r.dataset.id, r.querySelector(".pass-on").checked])),
+        mobile: Object.fromEntries([...document.querySelectorAll(".pass-site")].map((r) => [r.dataset.id, r.querySelector(".pass-mobile").checked])),
+      },
       apiKeys: {},
     };
     document.querySelectorAll(".key-row").forEach((row) => {

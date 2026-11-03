@@ -11,9 +11,9 @@
 // We also remember which sites refused, so saved links / scenes can go straight
 // to a new tab. Saved links themselves live in links.js.
 //
-// EXPERIMENTAL: when "Show Tabletop Audio inside the Website panel" is ticked in
-// Settings, tabletopaudio.com addresses are loaded through the helper's
-// pass-through (helper/tta-proxy.js, on the dashboard's port + 1) instead.
+// EXPERIMENTAL: sites ticked in ⚙ Settings → Experimental (Tabletop Audio, myNoise,
+// Rainy Mood, Ambient-Mixer) are loaded through the helper's pass-through instead
+// (helper/pass-through.js, one port per site).
 
 const EmbedPanel = (() => {
   const $ = (id) => document.getElementById(id);
@@ -26,21 +26,43 @@ const EmbedPanel = (() => {
     try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return ""; }
   };
 
-  // Pass-through for Tabletop Audio: null when off, else its port.
-  let ttaPort = null;
-  const isTta = (url) => /(^|\.)tabletopaudio\.com$/.test(hostOf(url)) && !hostOf(url).startsWith("sounds.");
+  // EXPERIMENTAL pass-through (helper/pass-through.js): sites that refuse to be
+  // embedded, shown through the helper – one port per site. From /api/settings:
+  // [{ id, name, port, hosts: ["mynoise.net", …], enabled, mobile }]
+  let passSites = [];
+  function passSiteFor(url) {
+    let host = "";
+    try { host = new URL(url).host.toLowerCase(); } catch { return null; }
+    return passSites.find((s) => s.enabled && s.hosts.includes(host)) || null;
+  }
   function viaPassThrough(url) {
-    if (!ttaPort || !isTta(url)) return null;
+    const site = passSiteFor(url);
+    if (!site) return null;
     const u = new URL(url);
-    return `${location.protocol}//${location.hostname}:${ttaPort}${u.pathname}${u.search}${u.hash}`;
+    return `${location.protocol}//${location.hostname}:${site.port}${u.pathname}${u.search}${u.hash}`;
   }
-  function setTtaPassThrough(settings) {
-    const port = settings?.experimental?.ttaProxy ? settings.experimental.ttaProxyPort : null;
-    if (port === ttaPort) return;
-    ttaPort = port;
+  function readPassSites(settings) {
+    const e = settings?.experimental || {};
+    return (e.sites || []).map((s) => ({ ...s, enabled: !!e.passThrough?.[s.id], mobile: !!e.mobile?.[s.id] }));
+  }
+  function setPassThrough(settings) {
+    const next = readPassSites(settings);
+    const sig = (list) => JSON.stringify(list.map((s) => [s.id, s.enabled, s.mobile]));
+    if (sig(next) === sig(passSites)) return;
+    const before = new Map(passSites.map((s) => [s.id, sig([s])]));
+    passSites = next;
     window.dispatchEvent(new Event("embed-mode-changed")); // links.js re-draws its ↗ marks
-    for (const inst of instances) if (isTta(inst.url())) inst.load(inst.url()); // switch open pages over
+    // Reload pages whose site was switched on/off (or to/from the mobile version).
+    for (const inst of instances) {
+      let host = "";
+      try { host = new URL(inst.url()).host.toLowerCase(); } catch { continue; }
+      const site = next.find((s) => s.hosts.includes(host));
+      if (site && before.get(site.id) !== sig([site])) inst.load(inst.url());
+    }
   }
+  // Pass-through pages can't break out of their tile ("frame busting") or open
+  // pop-ups over the dashboard, but scripts, sound and their own storage work.
+  const SANDBOX = "allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals allow-downloads allow-presentation";
 
   function isBlocked(url) {
     if (viaPassThrough(url)) return false;
@@ -108,6 +130,25 @@ const EmbedPanel = (() => {
       if (on) q(".web-url").focus();
     }
 
+    // A "launcher": the tile keeps its place but opens the site in a Kenku tab.
+    function showLauncher(url, headline, text) {
+      frame.src = "about:blank";
+      q(".web-frame").hidden = true;
+      const box = q(".web-message");
+      box.hidden = false;
+      box.className = "web-launch";
+      box.innerHTML = "";
+      const h = document.createElement("b");
+      h.textContent = headline;
+      const p = document.createElement("small");
+      p.textContent = text;
+      const b = document.createElement("button");
+      b.className = "primary";
+      b.textContent = "↗ Open in a Kenku tab";
+      b.onclick = () => openNewTab(url);
+      box.append(h, p, b);
+    }
+
     async function load(url) {
       url = normalise(url);
       if (!url) return;
@@ -135,33 +176,38 @@ const EmbedPanel = (() => {
 
       const passUrl = viaPassThrough(url);
       if (passUrl) {
+        // Does the site answer the helper? (Bot protection sometimes says no.)
+        let pc = { ok: true };
+        try {
+          pc = await (await fetch("/api/pass-check?url=" + encodeURIComponent(url))).json();
+        } catch {
+          /* helper unreachable – try anyway */
+        }
+        if (url !== currentUrl) return;
+        if (!pc.ok) {
+          tile.setStatus("");
+          showLauncher(url, `${hostOf(url)} can't be shown here right now.`,
+            `${pc.reason || "The pass-through didn't work."} It opens in its own Kenku tab instead; its sound still reaches Discord.`);
+          return;
+        }
         wrap.hidden = false;
         message(null);
-        tile.setStatus("🧪 pass-through", "muted");
+        const site = passSiteFor(url);
+        tile.setStatus(site?.mobile ? "🧪 pass-through · 📱" : "🧪 pass-through", "muted");
+        frame.setAttribute("sandbox", SANDBOX);
         frame.src = passUrl;
         return;
       }
       tile.setStatus("");
+      frame.removeAttribute("sandbox");
 
       if (check.allowed !== null && check.allowed !== undefined) rememberBlocked(url, check.allowed === false);
 
       if (check.allowed === false) {
-        frame.src = "about:blank";
-        wrap.hidden = true;
-        // A "launcher": the tile stays in place and opens the site in a Kenku tab.
-        const box = q(".web-message");
-        box.hidden = false;
-        box.className = "web-launch";
-        box.innerHTML = "";
-        const h = document.createElement("b");
-        h.textContent = `${hostOf(url)} doesn't allow being shown inside other pages.`;
-        const p = document.createElement("small");
-        p.textContent = "It opens in its own Kenku tab instead; its sound still reaches Discord.";
-        const b = document.createElement("button");
-        b.className = "primary";
-        b.textContent = "↗ Open in a Kenku tab";
-        b.onclick = () => openNewTab(url);
-        box.append(h, p, b);
+        showLauncher(url, `${hostOf(url)} doesn't allow being shown inside other pages.`,
+          passSites.some((x) => x.hosts.includes(new URL(url).host.toLowerCase()))
+            ? "It opens in its own Kenku tab instead (its sound still reaches Discord) – or switch on its pass-through in ⚙ Settings → Experimental."
+            : "It opens in its own Kenku tab instead; its sound still reaches Discord.");
         return;
       }
 
@@ -183,12 +229,28 @@ const EmbedPanel = (() => {
     tile.addAction("☆", "Save this address as a link", () => Links.saveUrl(shownUrl));
     tile.addAction("↗", "Open in a new Kenku tab", () => openNewTab(shownUrl));
 
+    // Zoom: show the page smaller so more of it fits in the tile (works for any site).
+    const ZOOMS = [1, 0.85, 0.7, 0.55];
+    let zoom = ZOOMS.includes(config.zoom) ? config.zoom : 1;
+    const zoomBtn = tile.addAction("", "", () => {
+      zoom = ZOOMS[(ZOOMS.indexOf(zoom) + 1) % ZOOMS.length];
+      applyZoom();
+      tile.changed();
+    });
+    function applyZoom() {
+      frame.style.setProperty("--zoom", zoom);
+      frame.classList.toggle("zoomed", zoom !== 1);
+      zoomBtn.textContent = zoom === 1 ? "🔍" : `🔍${Math.round(zoom * 100)}%`;
+      zoomBtn.title = `Zoom: ${Math.round(zoom * 100)}% – click to show the page smaller (more of it fits)`;
+    }
+    applyZoom();
+
     const inst = {
       load,
       url: () => shownUrl,
       rename: () => shownUrl && tile.setTitle(nameFor(shownUrl, pageTitle)),
       tile,
-      save: () => ({ url: shownUrl }),
+      save: () => ({ url: shownUrl, ...(zoom !== 1 ? { zoom } : {}) }),
       destroy: () => {
         frame.src = "about:blank";
         instances.splice(instances.indexOf(inst), 1);
@@ -233,13 +295,13 @@ const EmbedPanel = (() => {
       key: (c) => normalise(c.url || "").replace(/\/$/, ""),
       size: { w: 5, h: 18, minW: 2, minH: 6 }, // 20px rows
       create: createWebsite });
-    window.addEventListener("settings-saved", (e) => setTtaPassThrough(e.detail));
+    window.addEventListener("settings-saved", (e) => setPassThrough(e.detail));
     // SoundPad / track lists or saved links arrived or changed → better tile names
     window.addEventListener("link-names-changed", () => instances.forEach((i) => i.rename()));
     // Find out whether the pass-through is on before tiles load their pages.
     ready = fetch("/api/settings")
       .then((r) => r.json())
-      .then((s) => (ttaPort = s.experimental?.ttaProxy ? s.experimental.ttaProxyPort : null))
+      .then((s) => (passSites = readPassSites(s)))
       .catch(() => {})
       .finally(() => window.dispatchEvent(new Event("embed-mode-changed")));
   }
@@ -253,6 +315,6 @@ const EmbedPanel = (() => {
     normalise,
     current: () => (lastUsed || instances[0])?.url() || "",
     urls: () => instances.map((i) => i.url()),
-    passThroughOn: () => !!ttaPort,
+    passThroughOn: () => passSites.some((s) => s.enabled),
   };
 })();

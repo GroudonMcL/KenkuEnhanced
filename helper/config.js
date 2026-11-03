@@ -18,7 +18,9 @@ const defaults = {
   downloadsFolder: path.join(ROOT, "downloads"),
   apiKeys: { youtube: "", freesound: "", pixabay: "" },
   // Off-by-default experiments (⚙ Settings → Experimental)
-  experimental: { ttaProxy: false },
+  // passThrough: { tta: true, mynoise: false, … } – which sites the helper passes through
+  // mobile:      { mynoise: true, … }               – ask those sites for their mobile version
+  experimental: { passThrough: {}, mobile: {} },
 };
 
 let loadError = null; // set if config.json exists but couldn't be read
@@ -47,8 +49,15 @@ function loadConfig() {
     ...user,
     kenku: { ...defaults.kenku, ...(user.kenku || {}) },
     apiKeys: { ...defaults.apiKeys, ...(user.apiKeys || {}) },
-    experimental: { ...defaults.experimental, ...(user.experimental || {}) },
+    experimental: migrateExperimental(user.experimental),
   };
+}
+
+// Before step 4 there was only the Tabletop Audio switch: { ttaProxy: true }.
+function migrateExperimental(e = {}) {
+  const passThrough = { ...(e.passThrough || {}) };
+  if (e.ttaProxy && passThrough.tta === undefined) passThrough.tta = true;
+  return { passThrough, mobile: { ...(e.mobile || {}) } };
 }
 
 const config = loadConfig();

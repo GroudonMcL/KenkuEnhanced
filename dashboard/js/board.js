@@ -225,14 +225,16 @@ const Board = (() => {
     // ---- Put it on the grid ----
     tiles.set(tile.id, tile);
     $("board").appendChild(el);
-    grid.makeWidget(el, widgetOpts(def, { ...saved, id: tile.id }));
+    // (Fit-to-content is switched on only once the tile has content – see below.)
+    grid.makeWidget(el, { ...widgetOpts(def, { ...saved, id: tile.id }), sizeToContent: false });
     if (saved.collapsed) showCollapsed(true);
 
     showTitle();
     tile.inst = def.create(tile, config) || {};
     if (def.fitContent) {
       tile.body.classList.add("flush"); // the content carries its own padding (exact measuring)
-      tile.fit = () => !tile.collapsed && grid.resizeToContent(el);
+      tile.fit = () => !tile.collapsed && tile.body.firstElementChild && grid.resizeToContent(el);
+      if (!tile.collapsed) grid.update(el, { sizeToContent: true });
       requestAnimationFrame(tile.fit);
     } else {
       tile.fit = () => {};
