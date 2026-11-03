@@ -303,15 +303,30 @@ const SoundsPanel = (() => {
     });
     window.addEventListener("settings-saved", loadFolders); // downloads folder may have changed
 
+    $("open-sounds").addEventListener("click", () => {
+      open();
+      $("snd-search").focus();
+    });
+    $("sounds-close").addEventListener("click", () => {
+      $("sounds-dialog").close();
+    });
+    // Closing the pop-up stops a preview that's still playing
+    $("sounds-dialog").addEventListener("close", () => stopPreview());
+
     loadFolders();
   }
 
-  // Used by ✨ Vibe: show the panel and search for `q`.
+  // The "🔎 Find sounds" pop-up
+  function open() {
+    if (!$("sounds-dialog").open) $("sounds-dialog").showModal();
+  }
+
+  // Used by ✨ Vibe: open the pop-up and search for `q`.
   function searchFor(q) {
-    Layout.show("sounds");
+    open();
     $("snd-search").value = q;
     search(q, 1);
-    $("panel-sounds").scrollTop = 0;
+    $("sounds-dialog").scrollTop = 0;
   }
 
   return { init, search: searchFor };

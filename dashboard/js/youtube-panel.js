@@ -1,7 +1,7 @@
-// youtube-panel.js – Panel B: several YouTube players ("decks") plus search.
+// youtube-panel.js – YouTube tiles ("decks") plus the "+ YouTube" search dialog.
 //
-// Each deck is an independent player with its own link, volume and loop button,
-// so you can layer e.g. a rain ambience under some music. All of them play
+// Each YouTube tile is an independent player with its own link, volume and loop
+// button, so you can layer e.g. a rain ambience under some music. All of them play
 // through this page, so in Kenku's browser they all reach Discord.
 //
 // Uses the official YouTube IFrame Player API:
@@ -42,7 +42,7 @@ const YouTubePanel = (() => {
 
   // Make sure at least n players exist (Scenes use this); returns the deck list.
   function ensureDecks(n) {
-    while (decks.length < n) addDeck();
+    while (decks.length < n) Board.add("youtube", {});
     return decks;
   }
 
@@ -54,37 +54,22 @@ const YouTubePanel = (() => {
   }
 
   // ---------------------------------------------------------------------------
-  // Saving: an array of { name, url, volume, loop, collapsed }, one per deck
+  // One player = one tile. Its settings { url, volume, loop } are saved with
+  // the board layout.
   // ---------------------------------------------------------------------------
-  function save() {
-    Store.set("youtube.decks", decks.map((d) => d.saved));
-  }
-
-  function loadSaved() {
-    let saved = Store.get("youtube.decks", null);
-    if (!saved) {
-      // Older version stored a single URL + volume – carry it over.
-      saved = [{ url: Store.get("youtube.url", ""), volume: Store.get("youtube.volume", 60), loop: false }];
-    }
-    return saved.length ? saved : [{ url: "", volume: 60, loop: false }];
-  }
-
-  // ---------------------------------------------------------------------------
-  // One deck
-  // ---------------------------------------------------------------------------
-  function createDeck(saved, { autoplay = false } = {}) {
+  function createDeck(tile, saved, { autoplay = false } = {}) {
     const el = $("yt-deck-template").content.firstElementChild.cloneNode(true);
-    $("yt-decks").appendChild(el);
+    tile.body.appendChild(el);
     const q = (sel) => el.querySelector(sel);
+    tile.setTitle("YouTube");
 
     const deck = {
       el,
+      tile,
       saved: {
-        name: saved.name || "",          // empty = use "Player 1", "Player 2"...
         url: saved.url || "",
         volume: saved.volume ?? 60,
         loop: !!saved.loop,
-        collapsed: !!saved.collapsed,    // minimised?
       },
       player: null,
       ready: false,
@@ -92,20 +77,21 @@ const YouTubePanel = (() => {
       target: null,   // what's currently loaded
     };
     decks.push(deck);
+    const save = () => tile.changed();
 
     q(".yt-url").value = deck.saved.url;
     q(".yt-volume").value = deck.saved.volume;
     q(".yt-volume-value").textContent = deck.saved.volume + "%";
     q(".yt-loop").classList.toggle("on", deck.saved.loop);
-    q(".yt-deck-name").value = deck.saved.name;
-    setCollapsed(deck.saved.collapsed);
 
-    function setCollapsed(on) {
-      deck.saved.collapsed = on;
-      el.classList.toggle("collapsed", on);
-      q(".yt-collapse").textContent = on ? "▸" : "▾";
-      q(".yt-collapse").title = on ? "Expand" : "Minimise";
+    // The link box only shows while the player is empty, or after 🔗 in the title bar.
+    function showLinkBox(on) {
+      q(".yt-form").hidden = !on;
+      if (on) q(".yt-url").focus();
     }
+    showLinkBox(!deck.saved.url);
+    tile.addAction("🔗", "Change the video (paste a link)", () => showLinkBox(q(".yt-form").hidden));
+    tile.addAction("🔎", "Search YouTube for this player", () => openDialog(deck));
 
     function message(text, kind = "warn", link) {
       const box = q(".yt-message");
@@ -121,7 +107,7 @@ const YouTubePanel = (() => {
       }
     }
 
-    // autoplay=false just "cues" it (used when restoring after a reload).
+    // play=false just "cues" it (used when restoring after a reload).
     deck.load = (target, play = true) => {
       deck.target = target;
       if (!deck.ready) { deck.pending = { target, play }; return; }
@@ -136,14 +122,17 @@ const YouTubePanel = (() => {
     };
 
     // Load from a link/ID typed by the user or chosen from search results.
-    deck.loadUrl = (text, play = true) => {
+    deck.loadUrl = (text, play = true, title) => {
       const target = parse(text);
       if (!target) {
         message("Couldn't find a video or playlist ID in that. Paste a YouTube link or an ID.", "error");
+        showLinkBox(true);
         return;
       }
       q(".yt-url").value = text.trim();
       deck.saved.url = text.trim();
+      if (title) tile.setTitle(title);
+      showLinkBox(false);
       save();
       deck.load(target, play);
     };
@@ -163,12 +152,13 @@ const YouTubePanel = (() => {
     }
 
     function onStateChange(e) {
-      // 1 = playing, 2 = paused, 0 = ended
-      q(".yt-playpause").textContent = e.data === YT.PlayerState.PLAYING ? "⏸" : "▶";
-      // Show the title once it's playing, or loaded and waiting for ▶
-      if (e.data === YT.PlayerState.PLAYING || e.data === YT.PlayerState.CUED) {
+      const playing = e.data === YT.PlayerState.PLAYING;
+      q(".yt-playpause").textContent = playing ? "⏸" : "▶";
+      tile.setStatus(playing ? "● playing" : "", "playing");
+      // The tile takes the video's name once it's loaded
+      if (playing || e.data === YT.PlayerState.CUED) {
         const title = deck.player.getVideoData?.().title;
-        if (title) q(".yt-deck-title").textContent = title;
+        if (title) tile.setTitle(title);
       }
       // Loop a single video by starting it again when it ends.
       // (Playlists loop through setLoop instead – see the loop button.)
@@ -213,23 +203,7 @@ const YouTubePanel = (() => {
 
     // Loop: single videos restart in onStateChange; playlists use setLoop.
     q(".yt-loop").addEventListener("click", () => deck.setLoop(!deck.saved.loop));
-
     q(".yt-volume").addEventListener("input", (e) => deck.setVolume(Number(e.target.value)));
-
-    q(".yt-collapse").addEventListener("click", () => {
-      setCollapsed(!deck.saved.collapsed);
-      save();
-    });
-
-    // Rename: just type in the name box. Empty = back to "Player N".
-    q(".yt-deck-name").addEventListener("input", (e) => {
-      deck.saved.name = e.target.value.trim();
-      save();
-      renderResults(); // result buttons show player names
-    });
-    q(".yt-deck-name").addEventListener("keydown", (e) => {
-      if (e.key === "Enter") e.target.blur();
-    });
 
     // --- Small helpers other parts of the dashboard (Scenes) use ---
     // Set the volume (0-100). persist=false is used during fades so we don't
@@ -254,9 +228,7 @@ const YouTubePanel = (() => {
       if (deck.ready) deck.player.setLoop(deck.saved.loop);
       save();
     };
-    deck.displayName = () => deck.saved.name || q(".yt-deck-name").placeholder;
-
-    q(".yt-remove").addEventListener("click", () => removeDeck(deck));
+    deck.displayName = () => tile.title();
 
     // Start it
     if (apiReady) deck.createPlayer();
@@ -264,32 +236,16 @@ const YouTubePanel = (() => {
       const t = parse(deck.saved.url);
       if (t) deck.load(t, autoplay);
     }
-    return deck;
-  }
 
-  function removeDeck(deck) {
-    if (decks.length <= 1) return; // always keep one
-    deck.player?.destroy?.();
-    deck.el.remove();
-    decks.splice(decks.indexOf(deck), 1);
-    save();
-    refreshDeckLabels();
-  }
-
-  function addDeck(saved = { name: "", url: "", volume: 60, loop: false }, opts) {
-    const d = createDeck(saved, opts);
-    save();
-    refreshDeckLabels();
-    return d;
-  }
-
-  // Default names ("Player 1", "Player 2"...), remove buttons and result buttons depend on the deck count.
-  function refreshDeckLabels() {
-    decks.forEach((d, i) => {
-      d.el.querySelector(".yt-deck-name").placeholder = `Player ${i + 1}`;
-      d.el.querySelector(".yt-remove").hidden = decks.length <= 1;
-    });
-    renderResults();
+    return {
+      deck,
+      save: () => ({ ...deck.saved }),
+      destroy: () => {
+        deck.player?.destroy?.();
+        decks.splice(decks.indexOf(deck), 1);
+        renderResults();
+      },
+    };
   }
 
   // ---------------------------------------------------------------------------
@@ -323,20 +279,14 @@ const YouTubePanel = (() => {
     renderResults();
   }
 
+  // Search results: each one can go into a new player tile, or into an existing one.
   function renderResults() {
     const box = $("yt-results");
     box.innerHTML = "";
     box.hidden = !lastResults.length;
-    if (!lastResults.length) return;
-
-    const close = document.createElement("button");
-    close.className = "small yt-results-close";
-    close.textContent = "✕ Close results";
-    close.onclick = () => { lastResults = []; renderResults(); };
-    box.appendChild(close);
-
     for (const r of lastResults) {
       const url = r.listId ? `https://www.youtube.com/playlist?list=${r.listId}` : `https://www.youtube.com/watch?v=${r.videoId}`;
+      const title = decode(r.title);
       const row = document.createElement("div");
       row.className = "yt-result";
 
@@ -347,33 +297,59 @@ const YouTubePanel = (() => {
 
       const info = document.createElement("div");
       info.className = "yt-result-info";
-      const title = document.createElement("div");
-      title.className = "yt-result-title";
-      title.textContent = (r.listId ? "📃 " : "") + decode(r.title);
+      const t = document.createElement("div");
+      t.className = "yt-result-title";
+      t.textContent = (r.listId ? "📃 " : "") + title;
       const channel = document.createElement("div");
       channel.className = "yt-result-channel";
       channel.textContent = decode(r.channel);
 
-      // One button per player, plus "new player"
       const actions = document.createElement("div");
       actions.className = "yt-result-actions";
-      decks.forEach((d) => {
+      const into = (deck) => {
+        deck.loadUrl(url, false, title);
+        $("yt-dialog").close();
+      };
+      if (targetDeck && decks.includes(targetDeck)) {
         const b = document.createElement("button");
-        b.className = "small";
-        b.textContent = `→ ${d.displayName()}`;
-        b.title = `Load into ${d.displayName()} (press ▶ there to play)`;
-        b.onclick = () => d.loadUrl(url, false);
+        b.className = "small primary";
+        b.textContent = `→ Put in “${shorten(targetDeck.displayName())}”`;
+        b.onclick = () => into(targetDeck);
         actions.appendChild(b);
-      });
+      }
       const add = document.createElement("button");
-      add.className = "small primary";
-      add.textContent = "＋ New player";
-      add.onclick = () => addDeck({ url, volume: 60, loop: false }, { autoplay: false });
+      add.className = "small" + (targetDeck ? "" : " primary");
+      add.textContent = "＋ New tile";
+      add.title = "Add a YouTube tile with this (press ▶ there to play)";
+      add.onclick = () => {
+        Board.add("youtube", { url, volume: 60, loop: false, title });
+        $("yt-dialog").close();
+      };
       actions.appendChild(add);
 
-      info.append(title, channel, actions);
+      info.append(t, channel, actions);
       row.append(img, info);
       box.appendChild(row);
+    }
+  }
+
+  const shorten = (s) => (s.length > 28 ? s.slice(0, 27) + "…" : s);
+
+  // The "+ YouTube" dialog: search, or paste a link. If `deck` is given, results
+  // can go into that player instead of a new tile.
+  let targetDeck = null;
+  function openDialog(deck = null, query = "") {
+    targetDeck = deck;
+    $("yt-dialog-title").textContent = deck ? `Change “${shorten(deck.displayName())}”` : "Add a YouTube tile";
+    $("yt-link").value = "";
+    renderResults();
+    $("yt-dialog").showModal();
+    if (query) {
+      $("yt-search").value = query;
+      $("yt-search-type").value = "video";
+      search(query, "video");
+    } else {
+      $("yt-search").focus();
     }
   }
 
@@ -381,10 +357,19 @@ const YouTubePanel = (() => {
   // Start-up
   // ---------------------------------------------------------------------------
   function init() {
-    loadSaved().forEach((s) => createDeck(s));
-    refreshDeckLabels();
+    Board.register("youtube", {
+      badge: "YouTube",
+      badgeClass: "y",
+      size: { w: 4, h: 13, minW: 2, minH: 6 }, // 20px rows
+      create(tile, config) {
+        const inst = createDeck(tile, config);
+        if (config.title) tile.setTitle(config.title); // name from search, until YouTube tells us
+        return inst;
+      },
+    });
 
-    $("yt-add").addEventListener("click", () => addDeck());
+    $("add-youtube").addEventListener("click", () => openDialog());
+    $("yt-dialog-close").addEventListener("click", () => $("yt-dialog").close());
 
     const savedType = Store.get("youtube.searchType", "video");
     $("yt-search-type").value = savedType;
@@ -393,11 +378,22 @@ const YouTubePanel = (() => {
       Store.set("youtube.searchType", $("yt-search-type").value);
       search($("yt-search").value, $("yt-search-type").value);
     });
+    $("yt-link-form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const text = $("yt-link").value.trim();
+      if (!parse(text)) {
+        searchMessage("Couldn't find a video or playlist ID in that. Paste a YouTube link or an ID.", "error");
+        return;
+      }
+      if (targetDeck && decks.includes(targetDeck)) targetDeck.loadUrl(text, false);
+      else Board.add("youtube", { url: text, volume: 60, loop: false });
+      $("yt-dialog").close();
+    });
 
     // YouTube's script calls this global function once it has loaded.
     window.onYouTubeIframeAPIReady = () => {
       apiReady = true;
-      decks.forEach((d) => d.createPlayer());
+      decks.forEach((d) => d.player || d.createPlayer());
     };
     const s = document.createElement("script");
     s.src = "https://www.youtube.com/iframe_api";
@@ -405,13 +401,9 @@ const YouTubePanel = (() => {
     document.head.appendChild(s);
   }
 
-  // Used by ✨ Vibe: show the panel and search YouTube for `q`.
+  // Used by ✨ Vibe: open the YouTube dialog and search for `q`.
   function searchFor(q) {
-    Layout.show("youtube");
-    $("yt-search").value = q;
-    $("yt-search-type").value = "video";
-    search(q, "video");
-    $("panel-youtube").scrollTop = 0;
+    openDialog(null, q);
   }
 
   return { init, parse, decks: () => decks, ensureDecks, searchFor };

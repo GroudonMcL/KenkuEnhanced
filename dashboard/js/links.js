@@ -1,10 +1,10 @@
 // links.js – Phase 4: saved links + the Tabletop Audio SoundPad browser.
 //
-// Saved links are buttons in the Website panel (stored by the helper in
-// data/links.json). A link opens either in the Website panel or in a new Kenku
-// tab. "Automatic" uses the panel unless the site refuses to be embedded –
-// Tabletop Audio always refuses, so SoundPads open in a new Kenku tab, where
-// their audio still reaches Discord.
+// Saved links are buttons in the "+ Website" dialog (stored by the helper in
+// data/links.json). A link opens either in a Website tile or in a new Kenku
+// tab. "Automatic" uses a tile unless the site refuses to be embedded –
+// Tabletop Audio refuses (unless the experimental pass-through is on), so
+// SoundPads then open in a new Kenku tab, where their audio still reaches Discord.
 //
 // Kenku turns every window.open into a NEW tab (it can't reuse one), so when a
 // scene opens its link automatically we skip links already opened since the
@@ -60,17 +60,23 @@ const Links = (() => {
     return mode;
   }
 
-  function open(url, openIn) {
+  // opts.newTile: always add a new Website tile (from the dialog)
+  function open(url, openIn, opts = {}) {
     url = EmbedPanel.normalise(url || "");
     if (!url) return;
     if (whereFor(url, openIn) === "tab") {
       EmbedPanel.openNewTab(url);
       openedTabs.add(url);
     } else {
-      Layout.show("embed");
-      EmbedPanel.load(url).then(render); // re-highlight once we know if it loaded
+      EmbedPanel.load(url, opts).then(render); // re-highlight once we know if it loaded
     }
-    setTimeout(render, 0); // highlight the link now showing in the panel
+    setTimeout(render, 0);
+  }
+
+  // Pick from the dialog: open as a new tile and close the dialog.
+  function pickFromDialog(url, openIn) {
+    $("web-add-dialog").close();
+    open(url, openIn, { newTile: true });
   }
 
   // Used by scenes: don't pile up Kenku tabs or reload a page that's already open.
@@ -79,7 +85,7 @@ const Links = (() => {
     if (!url) return;
     if (whereFor(url) === "tab") {
       if (openedTabs.has(url)) return;
-    } else if (sameUrl(EmbedPanel.current(), url)) {
+    } else if (EmbedPanel.urls().some((u) => sameUrl(u, url))) {
       return;
     }
     open(url);
@@ -100,9 +106,9 @@ const Links = (() => {
       b.className = "small link-btn";
       const where = whereFor(link.url, link.openIn);
       b.textContent = link.name + (where === "tab" ? " ↗" : "");
-      b.title = editMode ? "Click to edit" : `${link.url}\n${where === "tab" ? "Opens in a new Kenku tab" : "Opens in the Website panel"}`;
-      b.classList.toggle("on", where === "panel" && sameUrl(EmbedPanel.current(), link.url));
-      b.onclick = () => (editMode ? openDialog(link, false) : open(link.url, link.openIn));
+      b.title = editMode ? "Click to edit" : `${link.url}\n${where === "tab" ? "Opens in a new Kenku tab" : "Adds a Website tile"}`;
+      b.classList.toggle("on", where === "panel" && EmbedPanel.urls().some((u) => sameUrl(u, link.url)));
+      b.onclick = () => (editMode ? openDialog(link, false) : pickFromDialog(link.url, link.openIn));
       box.appendChild(b);
     });
     $("link-edit-mode").classList.toggle("on", editMode);
@@ -157,10 +163,29 @@ const Links = (() => {
     }
   }
 
+  // Name to show for an address we know (SoundPad, saved link), or "".
+  function nameFor(url) {
+    const pad = soundpads?.find((p) => sameUrl(p.url, url));
+    if (pad) return `${pad.name} – Tabletop Audio SoundPad`;
+    const link = findByUrl(url);
+    if (link) return link.name;
+    if (/tabletopaudio\.com\/custom_sp/i.test(url)) return "Custom SoundPad – Tabletop Audio";
+    return "";
+  }
+
+  // ☆ in a Website tile: save (or edit) its address as a link.
+  function saveUrl(url) {
+    url = EmbedPanel.normalise(url || "");
+    if (!url) return;
+    const existing = findByUrl(url);
+    if (existing) return openDialog(existing, false);
+    openDialog({ id: newId(), name: guessName(url), url, openIn: "auto" }, true);
+  }
+
   function saveCurrent() {
-    const url = EmbedPanel.normalise($("embed-url").value);
+    const url = EmbedPanel.normalise($("web-add-url").value);
     if (!url) {
-      $("embed-url").focus();
+      $("web-add-url").focus();
       return;
     }
     const existing = findByUrl(url);
@@ -296,9 +321,9 @@ const Links = (() => {
       go.type = "button";
       go.className = "small primary";
       const inPanel = whereFor(p.url) === "panel"; // only with the experimental pass-through
-      go.textContent = inPanel ? "▶ Open" : "↗ Open";
-      go.title = inPanel ? "Open in the Website panel" : "Open in a new Kenku tab";
-      go.onclick = () => open(p.url);
+      go.textContent = inPanel ? "＋ Add tile" : "↗ Open";
+      go.title = inPanel ? "Add a Website tile with this SoundPad" : "Open in a new Kenku tab";
+      go.onclick = () => pickFromDialog(p.url);
       const saved = !!findByUrl(p.url);
       const star = document.createElement("button");
       star.type = "button";
@@ -338,8 +363,20 @@ const Links = (() => {
     $("soundpad-toggle").addEventListener("click", () => toggleBrowser());
     $("soundpad-close").addEventListener("click", () => toggleBrowser(false));
     $("soundpad-filter").addEventListener("input", () => soundpads && renderSoundpads());
-    // Loading something by hand changes which link is highlighted
-    $("embed-form").addEventListener("submit", () => setTimeout(render, 0));
+    // "+ Website" dialog
+    $("add-website").addEventListener("click", () => {
+      $("web-add-url").value = "";
+      render();
+      $("web-add-dialog").showModal();
+      if (!soundpads?.length) loadSoundpads();
+    });
+    $("web-add-close").addEventListener("click", () => $("web-add-dialog").close());
+    $("web-add-form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const url = EmbedPanel.normalise($("web-add-url").value);
+      if (url) pickFromDialog(url);
+    });
+    window.addEventListener("board-changed", render); // "on" marks for links shown in tiles
 
     window.addEventListener("embed-mode-changed", () => {
       render();
@@ -356,6 +393,8 @@ const Links = (() => {
     open,
     openForScene,
     list: () => links,
+    nameFor,
+    saveUrl,
     soundpads: () => soundpads || [],
   };
 })();

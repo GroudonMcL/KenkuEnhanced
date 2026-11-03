@@ -112,6 +112,38 @@ app.get("/health", async (req, res) => {
 // page can't find out why. So we fetch the site here and read its headers:
 //   X-Frame-Options: DENY / SAMEORIGIN          → blocked
 //   Content-Security-Policy: frame-ancestors ... → blocked unless it allows us
+// It also returns the page's <title>, so a Website tile can name itself.
+
+// Read just the start of a web page (enough for <title>) and stop downloading.
+async function readTitle(r) {
+  if (!/html/i.test(r.headers.get("content-type") || "") || !r.body) {
+    r.body?.cancel();
+    return null;
+  }
+  const reader = r.body.getReader();
+  const decoder = new TextDecoder();
+  let html = "";
+  try {
+    while (html.length < 200000) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      html += decoder.decode(value, { stream: true });
+      if (/<\/title>/i.test(html)) break;
+    }
+  } catch {
+    /* a half-read page is fine */
+  }
+  reader.cancel().catch(() => {});
+  const m = html.match(/<title[^>]*>([^<]*)<\/title>/i);
+  if (!m) return null;
+  const text = m[1]
+    .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"').replace(/&#0?39;|&apos;/g, "'")
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
+    .replace(/\s+/g, " ").trim();
+  return text.slice(0, 120) || null;
+}
+
 app.get("/api/frame-check", async (req, res) => {
   let url;
   try {
@@ -124,10 +156,10 @@ app.get("/api/frame-check", async (req, res) => {
   try {
     const r = await fetch(url, {
       redirect: "follow",
-      headers: { "User-Agent": "Mozilla/5.0 KenkuEnhanced frame check" },
+      headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36 KenkuEnhanced" },
       signal: AbortSignal.timeout(8000),
     });
-    r.body?.cancel(); // we only need the headers
+    const title = await readTitle(r); // only the first part of the page is read
 
     const xfo = (r.headers.get("x-frame-options") || "").toLowerCase();
     const csp = r.headers.get("content-security-policy") || "";
@@ -147,7 +179,7 @@ app.get("/api/frame-check", async (req, res) => {
         reason = `The site's security policy only allows framing by: ${sources.join(" ") || "nobody"}.`;
       }
     }
-    res.json({ url: r.url, status: r.status, allowed, reason, xFrameOptions: xfo || null, frameAncestors: fa || null });
+    res.json({ url: r.url, status: r.status, allowed, reason, title, xFrameOptions: xfo || null, frameAncestors: fa || null });
   } catch (err) {
     res.json({ url: url.href, allowed: null, reason: `Couldn't reach the site (${err.cause?.code || err.name}).` });
   }

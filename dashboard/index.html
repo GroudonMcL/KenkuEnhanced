@@ -4,24 +4,25 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Kenku Dashboard</title>
+  <link rel="stylesheet" href="vendor/gridstack/gridstack.min.css">
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-  <!-- Top bar: status lights and panel toggles -->
+  <!-- Top bar: status light, "add a tile" buttons, lock, settings -->
   <header class="topbar">
     <h1>Kenku Dashboard</h1>
     <span id="kenku-status" class="status status-unknown" title="Kenku Remote connection">Kenku: checking…</span>
     <button id="update-badge" class="update-badge" hidden>Update available</button>
     <span class="spacer"></span>
-    <div class="toggles" aria-label="Show or hide panels">
-      <button class="toggle" data-toggle="scenes">Scenes</button>
-      <button class="toggle" data-toggle="kenku">Kenku</button>
-      <button class="toggle" data-toggle="youtube">YouTube</button>
-      <button class="toggle" data-toggle="embed">Website</button>
-      <button class="toggle" data-toggle="sounds">Sounds</button>
-      <button id="reset-layout" class="toggle" title="Reset panel sizes">Reset layout</button>
-      <button id="open-settings" class="toggle" title="Settings">⚙ Settings</button>
+    <div class="add-buttons" aria-label="Add a tile">
+      <span class="add-label">Add</span>
+      <button id="add-kenku" type="button" class="add-btn"><span class="dot dot-k"></span>＋ Kenku</button>
+      <button id="add-youtube" type="button" class="add-btn"><span class="dot dot-y"></span>＋ YouTube</button>
+      <button id="add-website" type="button" class="add-btn"><span class="dot dot-w"></span>＋ Website</button>
     </div>
+    <button id="board-lock" type="button" class="icon-btn" title="Lock the layout">🔓</button>
+    <button id="board-reset" type="button" class="icon-btn" title="Put the default tiles back">⟲</button>
+    <button id="open-settings" type="button" class="icon-btn" title="Settings">⚙</button>
   </header>
 
   <!-- Scenes bar: one click = playlist + sounds + YouTube + volumes, with fades.
@@ -29,127 +30,120 @@
   <section id="scenes-bar" class="scenes-bar" aria-label="Scenes">
     <div id="scene-buttons" class="scene-buttons"></div>
     <div class="scene-tools">
-      <button id="vibe-open" class="mid" title="Pick music and sounds from a picture or a few words">✨ Vibe</button>
-      <button id="scene-capture" class="mid" title="Make a new scene from what's playing right now">＋ Save current as scene</button>
-      <button id="scene-edit-mode" class="mid" title="Click a scene to edit it instead of playing it">✎ Edit scenes</button>
-      <button id="scene-silence" class="mid danger" title="Fade everything out (key 0)">🔇 Fade out all</button>
+      <button id="scene-capture" class="small" title="Make a new scene from what's playing right now">＋ Save as scene</button>
+      <button id="scene-edit-mode" class="small" title="Click a scene to edit it instead of playing it">✎ Edit scenes</button>
+      <button id="open-sounds" class="small" title="Search Freesound and download sounds">🔎 Find sounds</button>
+      <button id="vibe-open" class="small" title="Pick music and sounds from a picture or a few words">✨ Vibe</button>
+      <button id="scene-silence" class="small danger" title="Fade everything out (key 0)">🔇 Fade out all</button>
     </div>
     <div id="scene-info" class="scene-info" hidden>
       <span id="scene-info-text"></span>
       <button id="scene-link" class="small" hidden>↗ Open scene link</button>
     </div>
   </section>
+  <div id="kenku-error" class="notice notice-error board-notice" hidden></div>
 
-  <!-- The panels. layout.js puts drag handles between the visible ones. -->
-  <main id="panels">
+  <!-- The tiles. board.js (gridstack) lays them out; each tile type fills its body. -->
+  <main id="board-wrap">
+    <div id="board" class="grid-stack"></div>
+  </main>
 
-    <!-- Panel A: Kenku control -->
-    <section class="panel" id="panel-kenku" data-panel="kenku">
-      <h2>Kenku</h2>
-      <div id="kenku-error" class="notice notice-error" hidden></div>
-
-      <div class="now-playing">
-        <div class="np-label">Now playing</div>
-        <div id="np-track" class="np-track">—</div>
-        <div id="np-playlist" class="np-playlist"></div>
-        <div id="np-progress" class="progress" title="Click to jump">
-          <div id="np-progress-fill" class="progress-fill"></div>
-        </div>
-        <div id="np-time" class="np-time">0:00 / 0:00</div>
+  <!-- Body of a YouTube tile (youtube-panel.js) -->
+  <template id="yt-deck-template">
+    <div class="yt-deck">
+      <form class="tile-url yt-form">
+        <input class="yt-url" type="text" placeholder="YouTube link or ID" autocomplete="off">
+        <button type="submit" class="small primary">Load</button>
+      </form>
+      <div class="notice yt-message" hidden></div>
+      <div class="yt-frame"><div class="yt-player"></div></div>
+      <div class="tile-controls">
+        <button type="button" class="small yt-playpause" title="Play / pause">▶</button>
+        <button type="button" class="small yt-loop" title="Loop">🔁</button>
+        <span class="vol-icon">🔊</span>
+        <input class="yt-volume" type="range" min="0" max="100" step="1" aria-label="Volume">
+        <span class="volume-value yt-volume-value"></span>
       </div>
+    </div>
+  </template>
 
-      <div class="transport">
-        <button id="btn-prev" class="big" title="Previous track">⏮</button>
-        <button id="btn-playpause" class="big primary" title="Play / pause">▶</button>
-        <button id="btn-stop" class="big" title="Stop (pause and rewind)">⏹</button>
-        <button id="btn-next" class="big" title="Next track">⏭</button>
+  <!-- Body of a Website tile (embed-panel.js) -->
+  <template id="web-tile-template">
+    <div class="web-tile">
+      <div class="web-bar">
+        <form class="tile-url web-form">
+          <input class="web-url" type="text" placeholder="https://…" autocomplete="off">
+          <button type="submit" class="small primary">Load</button>
+        </form>
       </div>
-
-      <div class="volume-row">
-        <button id="btn-mute" class="mid" title="Mute">🔊</button>
-        <input id="volume" type="range" min="0" max="100" step="1" value="80" aria-label="Playlist volume">
-        <span id="volume-value" class="volume-value">80%</span>
+      <div class="notice web-message" hidden></div>
+      <div class="web-frame">
+        <iframe title="Embedded website" allow="autoplay; encrypted-media; fullscreen"
+                referrerpolicy="strict-origin-when-cross-origin"></iframe>
       </div>
-      <div class="mode-row">
-        <button id="btn-shuffle" class="mid" title="Shuffle">🔀 Shuffle</button>
-        <button id="btn-repeat" class="mid" title="Repeat mode">🔁 Repeat: off</button>
-        <button id="btn-refresh" class="mid" title="Reload playlists and soundboards from Kenku">⟳ Refresh</button>
+    </div>
+  </template>
+
+  <!-- "+ Kenku" (kenku-panel.js) -->
+  <dialog id="kenku-add-dialog" class="dialog picker-dialog">
+    <div class="picker-head"><span class="tile-badge b-k">Kenku</span><h2>Add a Kenku tile</h2>
+      <button type="button" id="kenku-add-close" class="icon-btn" title="Close">✕</button></div>
+    <div class="picker-body">
+      <nav class="picker-side">
+        <button type="button" data-tab="nowplaying">▶ Now playing</button>
+        <button type="button" data-tab="playlists">🎵 Playlists <small id="kenku-add-count-playlists"></small></button>
+        <button type="button" data-tab="soundboards">🎛 Soundboards <small id="kenku-add-count-soundboards"></small></button>
+      </nav>
+      <div class="picker-main">
+        <input id="kenku-add-search" type="search" placeholder="Search names, tracks and sounds…" autocomplete="off">
+        <div id="kenku-add-list" class="pick-list"></div>
       </div>
+    </div>
+  </dialog>
 
-      <h3>Playlists</h3>
-      <div id="playlist-grid" class="grid"></div>
-
-      <h3>Soundboards
-        <button id="btn-stop-sounds" class="small danger" title="Stop every playing sound">Stop all sounds</button>
-      </h3>
-      <div id="soundboard-tabs" class="tabs"></div>
-      <div id="sound-grid" class="grid"></div>
-    </section>
-
-    <!-- Panel B: YouTube -->
-    <section class="panel" id="panel-youtube" data-panel="youtube">
-      <h2>YouTube</h2>
-      <!-- Search (results appear underneath; pick which player to send each one to) -->
+  <!-- "+ YouTube" (youtube-panel.js) -->
+  <dialog id="yt-dialog" class="dialog picker-dialog">
+    <div class="picker-head"><span class="tile-badge b-y">YouTube</span><h2 id="yt-dialog-title">Add a YouTube tile</h2>
+      <button type="button" id="yt-dialog-close" class="icon-btn" title="Close">✕</button></div>
+    <div class="picker-main">
       <form id="yt-search-form" class="url-row">
         <input id="yt-search" type="search" placeholder="Search YouTube (e.g. tavern ambience)" autocomplete="off">
         <select id="yt-search-type" aria-label="Search for">
           <option value="video">Videos</option>
           <option value="playlist">Playlists</option>
         </select>
-        <button type="submit" class="mid primary">Search</button>
+        <button type="submit" class="primary">Search</button>
+      </form>
+      <form id="yt-link-form" class="url-row">
+        <input id="yt-link" type="text" placeholder="…or paste a YouTube link" autocomplete="off">
+        <button type="submit">Use link</button>
       </form>
       <div id="yt-search-message" class="notice" hidden></div>
       <div id="yt-results" class="yt-results" hidden></div>
+    </div>
+  </dialog>
 
-      <!-- One card per player; youtube-panel.js builds them from the template below -->
-      <div id="yt-decks" class="yt-decks"></div>
-      <button id="yt-add" type="button" class="mid">＋ Add another player</button>
-
-      <template id="yt-deck-template">
-        <div class="yt-deck">
-          <div class="yt-deck-head">
-            <input class="yt-deck-name" type="text" maxlength="30" title="Click to rename" aria-label="Player name">
-            <span class="yt-deck-title"></span>
-            <button type="button" class="small yt-collapse" title="Minimise / expand">▾</button>
-            <button type="button" class="small yt-remove" title="Remove this player">✕</button>
-          </div>
-          <form class="url-row yt-form">
-            <input class="yt-url" type="text" placeholder="YouTube link or ID" autocomplete="off">
-            <button type="submit" class="mid primary">Load</button>
-          </form>
-          <div class="notice yt-message" hidden></div>
-          <div class="yt-frame"><div class="yt-player"></div></div>
-          <div class="volume-row">
-            <button type="button" class="mid yt-playpause" title="Play / pause">▶</button>
-            <button type="button" class="mid yt-loop" title="Loop">🔁 Loop</button>
-            <input class="yt-volume" type="range" min="0" max="100" step="1" aria-label="Volume">
-            <span class="volume-value yt-volume-value"></span>
-          </div>
-        </div>
-      </template>
-    </section>
-
-    <!-- Panel C: embed any website -->
-    <section class="panel" id="panel-embed" data-panel="embed">
-      <h2>Website</h2>
-      <form id="embed-form" class="url-row">
-        <input id="embed-url" type="text" placeholder="https://…" autocomplete="off">
-        <button type="submit" class="mid primary">Load</button>
-        <button type="button" id="embed-newtab" class="mid" title="Open in a new Kenku tab">↗ New tab</button>
-        <button type="button" id="link-save-current" class="mid" title="Save this address as a link button">☆ Save</button>
+  <!-- "+ Website" (links.js): address, saved links, Tabletop Audio SoundPads -->
+  <dialog id="web-add-dialog" class="dialog picker-dialog wide">
+    <div class="picker-head"><span class="tile-badge b-w">Website</span><h2>Add a website tile</h2>
+      <button type="button" id="web-add-close" class="icon-btn" title="Close">✕</button></div>
+    <div class="picker-main">
+      <form id="web-add-form" class="url-row">
+        <input id="web-add-url" type="text" placeholder="Type or paste an address – https://…" autocomplete="off">
+        <button type="submit" class="primary">＋ Add tile</button>
+        <button type="button" id="link-save-current" title="Save this address as a link button">☆ Save link</button>
       </form>
-
-      <!-- Saved links (links.js). Click = open; in edit mode, click = edit. -->
-      <div class="link-bar">
+        <!-- Saved links (links.js). Click = open; in edit mode, click = edit. -->
+        <div class="link-bar">
         <div id="link-list" class="link-list"></div>
         <div class="link-tools">
           <button type="button" id="soundpad-toggle" class="small" title="Browse Tabletop Audio's SoundPads">🎲 SoundPads</button>
           <button type="button" id="link-edit-mode" class="small" title="Click a link to rename, change or delete it">✎ Edit links</button>
         </div>
-      </div>
+        </div>
 
-      <!-- Tabletop Audio SoundPad browser -->
-      <div id="soundpad-browser" class="soundpad-browser" hidden>
+        <!-- Tabletop Audio SoundPad browser -->
+        <div id="soundpad-browser" class="soundpad-browser" hidden>
         <div class="soundpad-head">
           <input id="soundpad-filter" type="search" placeholder="Filter SoundPads (e.g. tavern)" autocomplete="off">
           <button type="button" id="soundpad-close" class="small">✕ Close</button>
@@ -157,21 +151,19 @@
         <div id="soundpad-cats" class="tabs"></div>
         <div id="soundpad-message" class="notice" hidden></div>
         <div id="soundpad-grid" class="soundpad-grid"></div>
-        <p class="hint">SoundPads run on Tabletop Audio's own site, so they open in a new Kenku tab
-          (their audio still reaches Discord). Tabletop Audio is free and fan-supported:
+        <p class="hint">SoundPads run on Tabletop Audio's own site. Unless the experimental pass-through is on
+          (⚙ Settings → Experimental), they open in a new Kenku tab (their audio still reaches Discord). Tabletop Audio is free and fan-supported:
           <a href="https://www.patreon.com/tabletopaudio" target="_blank" rel="noopener">support them on Patreon</a>.</p>
-      </div>
-      <div id="embed-message" class="notice" hidden></div>
-      <div class="embed-frame">
-        <iframe id="embed-iframe" title="Embedded website"
-                allow="autoplay; encrypted-media; fullscreen"
-                referrerpolicy="strict-origin-when-cross-origin"></iframe>
-      </div>
-    </section>
+        </div>
+    </div>
+  </dialog>
 
-    <!-- Panel D: find and download sounds (Freesound) -->
-    <section class="panel" id="panel-sounds" data-panel="sounds">
-      <h2>Sound search</h2>
+  <!-- "🔎 Find sounds" (sounds-panel.js): Freesound search + download -->
+  <dialog id="sounds-dialog" class="dialog picker-dialog">
+    <div class="picker-head"><span class="tile-badge b-s">Freesound</span><h2>Find sounds</h2>
+      <button type="button" id="sounds-close" class="icon-btn" title="Close">✕</button></div>
+    <div class="picker-main sounds-main">
+
       <form id="snd-search-form" class="url-row">
         <input id="snd-search" type="search" placeholder="Search Freesound (e.g. tavern crowd)" autocomplete="off">
         <button type="submit" class="mid primary">Search</button>
@@ -218,8 +210,8 @@
         <button type="button" class="small" data-snd-site="bbc" title="Free for personal, educational and research use only">BBC Sound Effects ↗</button>
         <button type="button" class="small" data-snd-site="pixabay">Pixabay ↗</button>
       </p>
-    </section>
-  </main>
+    </div>
+  </dialog>
 
   <!-- Settings pane (a pop-up dialog). settings.js fills it in and saves it. -->
   <dialog id="settings-dialog" class="dialog">
@@ -257,7 +249,7 @@
 
       <fieldset>
         <legend>Downloads folder</legend>
-        <p class="hint">Where sounds from the Sound search panel are saved, together with ATTRIBUTION.csv.</p>
+        <p class="hint">Where sounds from 🔎 Find sounds are saved, together with ATTRIBUTION.csv.</p>
         <input id="set-downloads" type="text" spellcheck="false">
         <label class="check"><input id="set-create-folder" type="checkbox" checked> Create the folder if it doesn't exist</label>
         <div id="set-downloads-status" class="hint"></div>
@@ -274,7 +266,7 @@
 
       <fieldset>
         <legend>Experimental</legend>
-        <label class="check"><input id="set-tta-proxy" type="checkbox"> Show Tabletop Audio inside the Website panel</label>
+        <label class="check"><input id="set-tta-proxy" type="checkbox"> Show Tabletop Audio inside Website tiles</label>
         <p class="hint">Tabletop Audio doesn't allow its site to be embedded, so this passes it (and its sounds)
           through the helper on this PC. For your own table only, please. It may stop working if Tabletop Audio
           changes their site; untick it to go back to new tabs.</p>
@@ -343,8 +335,8 @@
       <label>Address <input id="ln-url" type="url" placeholder="https://…" required></label>
       <label>Open in
         <select id="ln-open">
-          <option value="auto">Automatic (Website panel if the site allows it, otherwise a new tab)</option>
-          <option value="panel">The Website panel</option>
+          <option value="auto">Automatic (a Website tile if the site allows it, otherwise a new tab)</option>
+          <option value="panel">A Website tile</option>
           <option value="tab">A new Kenku tab</option>
         </select></label>
       <p class="hint">Tip: in Tabletop Audio's Custom SoundPad, click <b>Get Link</b> and paste that link here.</p>
@@ -424,7 +416,8 @@
 
   <!-- Plain scripts, loaded in order. No build step needed. -->
   <script src="js/storage.js"></script>
-  <script src="js/layout.js"></script>
+  <script src="vendor/gridstack/gridstack-all.js"></script>
+  <script src="js/board.js"></script>
   <script src="js/kenku-panel.js"></script>
   <script src="js/youtube-panel.js"></script>
   <script src="js/embed-panel.js"></script>

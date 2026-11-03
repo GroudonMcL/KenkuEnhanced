@@ -94,7 +94,7 @@ const Scenes = (() => {
     const box = $("scene-buttons");
     box.innerHTML = "";
     if (!scenes.length) {
-      box.innerHTML = '<span class="empty">No scenes yet. Start some music/sounds, then click “Save current as scene”.</span>';
+      box.innerHTML = '<span class="empty">No scenes yet. Start some music/sounds, then click “＋ Save as scene”.</span>';
     }
     scenes.forEach((scene, i) => {
       const b = document.createElement("button");
@@ -103,6 +103,7 @@ const Scenes = (() => {
       b.classList.toggle("on", scene.id === activeId);
       b.classList.toggle("busy", scene.id === busyId);
       b.title = (editMode ? "Click to edit" : `Start this scene${i < 9 ? ` (key ${i + 1})` : ""}`) +
+        `\n${summary(scene)}` +
         (scene.tags?.length ? `\nTags: ${scene.tags.join(", ")}` : "");
 
       const name = document.createElement("span");
@@ -115,7 +116,7 @@ const Scenes = (() => {
       if (i < 9) {
         const key = document.createElement("span");
         key.className = "scene-key";
-        key.textContent = `key ${i + 1}`;
+        key.textContent = String(i + 1);
         b.append(key);
       }
       b.addEventListener("click", () => (editMode ? openEditor(scene, false) : activate(scene)));

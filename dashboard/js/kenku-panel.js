@@ -1,11 +1,18 @@
-// kenku-panel.js – Panel A: control Kenku FM through the helper's /kenku proxy.
+// kenku-panel.js – everything Kenku: talking to Kenku FM through the helper's
+// /kenku proxy, plus three tile types and the "+ Kenku" picker.
 // API reference: docs/kenku-remote-api.md
+//
+//   Now playing  – the one shared Kenku player (Kenku plays one playlist at a time)
+//   Playlist     – one playlist's tracks; clicking a track plays it in that player
+//   Soundboard   – one soundboard's sounds as pads (many can play at once)
+//
+// The module polls Kenku (playback every second, sounds every 1.5 s) and tells
+// every tile when something changes.
 
 const KenkuPanel = (() => {
   const $ = (id) => document.getElementById(id);
 
   // ---- Talking to Kenku ---------------------------------------------------
-  // All calls go to /kenku/... on our helper, which forwards them to Kenku.
   async function api(path, method = "GET", body) {
     const opts = { method };
     if (body !== undefined) {
@@ -18,7 +25,7 @@ const KenkuPanel = (() => {
     return data;
   }
 
-  // Run a command; show an error if it fails, then refresh the display quickly.
+  // Run a command; show an error if it fails, then refresh quickly.
   async function command(path, method, body) {
     try {
       await api(path, method, body);
@@ -33,200 +40,154 @@ const KenkuPanel = (() => {
   function showError(msg) {
     const box = $("kenku-error");
     box.hidden = !msg;
-    if (msg) box.textContent = "⚠ " + msg;
+    if (msg) box.textContent = "⚠ Kenku: " + msg;
   }
 
-  // ---- State we keep in the page ----------------------------------------
+  // ---- State + listeners --------------------------------------------------
   let library = { playlists: [], tracks: [], soundboards: [], sounds: [] };
+  let loaded = false;                  // library loaded at least once
   let playback = null;                 // last /v1/playlist/playback reply
   let playingSoundIds = new Set();     // from /v1/soundboard/playback
-  let selectedBoard = Store.get("kenku.board", null);
-  let draggingVolume = false;          // don't fight the user while they drag
+  const listeners = { library: new Set(), playback: new Set(), sounds: new Set() };
 
-  // ---- Load playlists & soundboards ---------------------------------------
+  function on(event, fn) {
+    listeners[event].add(fn);
+    return () => listeners[event].delete(fn);
+  }
+  const emit = (event) => listeners[event].forEach((fn) => { try { fn(); } catch (e) { console.error(e); } });
+
   async function loadLibrary() {
     try {
       const [p, s] = await Promise.all([api("/v1/playlist"), api("/v1/soundboard")]);
       library = { playlists: p.playlists, tracks: p.tracks, soundboards: s.soundboards, sounds: s.sounds };
-      if (!library.soundboards.some((b) => b.id === selectedBoard)) {
-        selectedBoard = library.soundboards[0]?.id || null;
-      }
+      loaded = true;
       showError(null);
     } catch (err) {
-      showError("Couldn't load playlists: " + err.message);
+      showError("couldn't load playlists – " + err.message);
     }
-    renderPlaylists();
-    renderSoundboards();
+    emit("library");
   }
 
-  function renderPlaylists() {
-    const grid = $("playlist-grid");
-    grid.innerHTML = "";
-    if (!library.playlists.length) {
-      grid.innerHTML = '<div class="empty">No playlists found.</div>';
-      return;
-    }
-    for (const p of library.playlists) {
-      const b = document.createElement("button");
-      b.textContent = p.title;
-      b.dataset.id = p.id;
-      b.title = `${p.tracks.length} tracks`;
-      b.addEventListener("click", () => command("/v1/playlist/play", "PUT", { id: p.id }));
-      grid.appendChild(b);
-    }
-    highlightPlaylist();
-  }
-
-  function highlightPlaylist() {
-    const current = playback?.playlist?.id;
-    $("playlist-grid").querySelectorAll("button").forEach((b) => {
-      b.classList.toggle("on", b.dataset.id === current);
-    });
-  }
-
-  function renderSoundboards() {
-    const tabs = $("soundboard-tabs");
-    tabs.innerHTML = "";
-    for (const board of library.soundboards) {
-      const b = document.createElement("button");
-      b.textContent = board.title;
-      b.classList.toggle("on", board.id === selectedBoard);
-      b.addEventListener("click", () => {
-        selectedBoard = board.id;
-        Store.set("kenku.board", selectedBoard);
-        renderSoundboards();
-      });
-      tabs.appendChild(b);
-    }
-
-    const grid = $("sound-grid");
-    grid.innerHTML = "";
-    const board = library.soundboards.find((b) => b.id === selectedBoard);
-    if (!board) {
-      grid.innerHTML = '<div class="empty">No soundboards found.</div>';
-      return;
-    }
-    for (const soundId of board.sounds) {
-      const sound = library.sounds.find((s) => s.id === soundId);
-      if (!sound) continue;
-      const b = document.createElement("button");
-      b.dataset.id = sound.id;
-      b.innerHTML = "";
-      b.append(sound.title);
-      if (sound.loop) {
-        const mark = document.createElement("span");
-        mark.className = "loop-mark";
-        mark.textContent = " ↻";
-        mark.title = "Loops";
-        b.append(mark);
-      }
-      // Click toggles: stop it if it's playing, otherwise play it.
-      b.addEventListener("click", () => {
-        const playing = playingSoundIds.has(sound.id);
-        command(playing ? "/v1/soundboard/stop" : "/v1/soundboard/play", "PUT", { id: sound.id });
-      });
-      grid.appendChild(b);
-    }
-    highlightSounds();
-  }
-
-  function highlightSounds() {
-    $("sound-grid").querySelectorAll("button").forEach((b) => {
-      b.classList.toggle("on", playingSoundIds.has(b.dataset.id));
-    });
-  }
-
-  // ---- Polling: ask Kenku what's playing, regularly -----------------------
   async function pollPlayback() {
     try {
       playback = await api("/v1/playlist/playback");
     } catch {
-      playback = null; // the header status light shows the connection problem
+      playback = null; // the status light in the top bar shows the problem
     }
-    renderPlayback();
+    emit("playback");
   }
 
   async function pollSounds() {
+    let next;
     try {
-      const r = await api("/v1/soundboard/playback");
-      playingSoundIds = new Set(r.sounds.map((s) => s.id));
+      next = new Set((await api("/v1/soundboard/playback")).sounds.map((s) => s.id));
     } catch {
-      playingSoundIds = new Set();
+      next = new Set();
     }
-    highlightSounds();
+    const same = next.size === playingSoundIds.size && [...next].every((id) => playingSoundIds.has(id));
+    playingSoundIds = next;
+    if (!same) emit("sounds");
   }
+
+  const playlistById = (id) => library.playlists.find((p) => p.id === id);
+  const boardById = (id) => library.soundboards.find((b) => b.id === id);
+  const trackById = (id) => library.tracks.find((t) => t.id === id);
+  const soundById = (id) => library.sounds.find((s) => s.id === id);
 
   function fmt(sec) {
     sec = Math.max(0, Math.floor(sec || 0));
     return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`;
   }
 
-  function renderPlayback() {
-    const p = playback;
-    $("np-track").textContent = p?.track?.title || "—";
-    $("np-playlist").textContent = p?.playlist?.title || "";
-    const dur = p?.track?.duration || 0;
-    const pos = p?.track?.progress || 0;
-    $("np-progress-fill").style.width = dur ? `${Math.min(100, (pos / dur) * 100)}%` : "0";
-    $("np-time").textContent = `${fmt(pos)} / ${fmt(dur)}`;
+  const el = (tag, cls, text) => {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text !== undefined) e.textContent = text;
+    return e;
+  };
 
-    $("btn-playpause").textContent = p?.playing ? "⏸" : "▶";
-    $("btn-mute").textContent = p?.muted ? "🔇" : "🔊";
-    $("btn-mute").classList.toggle("on", !!p?.muted);
-    $("btn-shuffle").classList.toggle("on", !!p?.shuffle);
-    const repeat = p?.repeat || "off";
-    $("btn-repeat").textContent = `🔁 Repeat: ${repeat}`;
-    $("btn-repeat").classList.toggle("on", repeat !== "off");
+  // ===========================================================================
+  // Tile: Now playing
+  // ===========================================================================
+  function createNowPlaying(tile) {
+    tile.setTitle("Now playing");
+    tile.body.innerHTML = `
+      <div class="np">
+        <div class="np-info">
+          <div class="np-track">—</div>
+          <div class="np-playlist"></div>
+        </div>
+        <div class="np-ctl">
+          <button type="button" class="np-prev" title="Previous track">⏮</button>
+          <button type="button" class="np-play primary" title="Play / pause">▶</button>
+          <button type="button" class="np-stop" title="Stop (pause and rewind)">⏹</button>
+          <button type="button" class="np-next" title="Next track">⏭</button>
+          <button type="button" class="np-shuffle" title="Shuffle">🔀</button>
+          <button type="button" class="np-repeat" title="Repeat: off">🔁</button>
+        </div>
+        <div class="np-seek">
+          <span class="np-pos">0:00</span>
+          <div class="progress" title="Click to jump"><div class="progress-fill"></div></div>
+          <span class="np-dur">0:00</span>
+        </div>
+        <div class="np-vol">
+          <button type="button" class="np-mute" title="Mute">🔊</button>
+          <input type="range" min="0" max="100" step="1" value="80" aria-label="Playlist volume">
+          <span class="volume-value">80%</span>
+        </div>
+      </div>`;
+    const q = (s) => tile.body.querySelector(s);
+    const slider = q(".np-vol input");
+    let draggingVolume = false;
 
-    if (p && !draggingVolume) {
-      const v = Math.round(p.volume * 100);
-      $("volume").value = v;
-      $("volume-value").textContent = v + "%";
+    function render() {
+      const p = playback;
+      q(".np-track").textContent = p?.track?.title || "Nothing playing";
+      q(".np-playlist").textContent = p?.playlist?.title || "";
+      const dur = p?.track?.duration || 0;
+      const pos = p?.track?.progress || 0;
+      q(".progress-fill").style.width = dur ? `${Math.min(100, (pos / dur) * 100)}%` : "0";
+      q(".np-pos").textContent = fmt(pos);
+      q(".np-dur").textContent = fmt(dur);
+      q(".np-play").textContent = p?.playing ? "⏸" : "▶";
+      q(".np-mute").textContent = p?.muted ? "🔇" : "🔊";
+      q(".np-mute").classList.toggle("on", !!p?.muted);
+      q(".np-shuffle").classList.toggle("on", !!p?.shuffle);
+      const repeat = p?.repeat || "off";
+      q(".np-repeat").textContent = repeat === "track" ? "🔂" : "🔁";
+      q(".np-repeat").title = `Repeat: ${repeat} (click to change)`;
+      q(".np-repeat").classList.toggle("on", repeat !== "off");
+      if (p && !draggingVolume) {
+        const v = Math.round(p.volume * 100);
+        slider.value = v;
+        q(".np-vol .volume-value").textContent = v + "%";
+      }
+      tile.setStatus(p?.playing ? "● playing" : "", "playing");
     }
-    highlightPlaylist();
-  }
 
-  // ---- Buttons --------------------------------------------------------------
-  function wireControls() {
-    $("btn-playpause").addEventListener("click", () => {
-      command(playback?.playing ? "/v1/playlist/playback/pause" : "/v1/playlist/playback/play", "PUT");
-    });
+    q(".np-play").onclick = () => command(playback?.playing ? "/v1/playlist/playback/pause" : "/v1/playlist/playback/play", "PUT");
     // Kenku has no "stop" for playlists, so Stop = pause + jump back to the start.
-    $("btn-stop").addEventListener("click", async () => {
+    q(".np-stop").onclick = async () => {
       await command("/v1/playlist/playback/pause", "PUT");
       await command("/v1/playlist/playback/seek", "PUT", { to: 0 });
-    });
-    $("btn-next").addEventListener("click", () => command("/v1/playlist/playback/next", "POST"));
-    $("btn-prev").addEventListener("click", () => command("/v1/playlist/playback/previous", "POST"));
-    $("btn-mute").addEventListener("click", () =>
-      command("/v1/playlist/playback/mute", "PUT", { mute: !playback?.muted })
-    );
-    $("btn-shuffle").addEventListener("click", () =>
-      command("/v1/playlist/playback/shuffle", "PUT", { shuffle: !playback?.shuffle })
-    );
-    $("btn-repeat").addEventListener("click", () => {
+    };
+    q(".np-next").onclick = () => command("/v1/playlist/playback/next", "POST");
+    q(".np-prev").onclick = () => command("/v1/playlist/playback/previous", "POST");
+    q(".np-mute").onclick = () => command("/v1/playlist/playback/mute", "PUT", { mute: !playback?.muted });
+    q(".np-shuffle").onclick = () => command("/v1/playlist/playback/shuffle", "PUT", { shuffle: !playback?.shuffle });
+    q(".np-repeat").onclick = () => {
       const order = ["off", "playlist", "track"];
       const next = order[(order.indexOf(playback?.repeat || "off") + 1) % order.length];
       command("/v1/playlist/playback/repeat", "PUT", { repeat: next });
-    });
-    $("btn-refresh").addEventListener("click", loadLibrary);
-
-    $("btn-stop-sounds").addEventListener("click", async () => {
-      await Promise.all([...playingSoundIds].map((id) => api("/v1/soundboard/stop", "PUT", { id }).catch(() => {})));
-      pollSounds();
-    });
-
-    // Click on the progress bar to jump to that point in the track.
-    $("np-progress").addEventListener("click", (e) => {
+    };
+    q(".progress").onclick = (e) => {
       const dur = playback?.track?.duration;
       if (!dur) return;
       const rect = e.currentTarget.getBoundingClientRect();
-      const to = ((e.clientX - rect.left) / rect.width) * dur;
-      command("/v1/playlist/playback/seek", "PUT", { to: Math.round(to) });
-    });
+      command("/v1/playlist/playback/seek", "PUT", { to: Math.round(((e.clientX - rect.left) / rect.width) * dur) });
+    };
 
-    // Volume slider: send at most ~8 updates per second while dragging.
-    const slider = $("volume");
+    // Volume: send at most ~8 updates per second while dragging.
     let lastSent = 0;
     let pending = null;
     function sendVolume() {
@@ -236,7 +197,7 @@ const KenkuPanel = (() => {
     }
     slider.addEventListener("input", () => {
       draggingVolume = true;
-      $("volume-value").textContent = slider.value + "%";
+      q(".np-vol .volume-value").textContent = slider.value + "%";
       if (Date.now() - lastSent > 120) sendVolume();
       else if (!pending) pending = setTimeout(sendVolume, 120);
     });
@@ -244,10 +205,269 @@ const KenkuPanel = (() => {
       sendVolume();
       setTimeout(() => (draggingVolume = false), 500);
     });
+
+    const off = on("playback", render);
+    render();
+    return { save: () => ({}), destroy: off };
   }
 
+  // ===========================================================================
+  // Shared bits for Playlist and Soundboard tiles
+  // ===========================================================================
+  // When a tile doesn't know which playlist/soundboard to show (new, or it was
+  // deleted in Kenku), show a menu to pick one.
+  function chooser(tile, kind, onPick) {
+    const list = kind === "playlist" ? library.playlists : library.soundboards;
+    const box = el("div", "tile-empty");
+    if (!loaded) {
+      box.textContent = "Waiting for Kenku…";
+      return box;
+    }
+    if (!list.length) {
+      box.textContent = kind === "playlist" ? "Kenku has no playlists yet." : "Kenku has no soundboards yet.";
+      return box;
+    }
+    const sel = el("select");
+    sel.append(new Option(kind === "playlist" ? "Choose a playlist…" : "Choose a soundboard…", ""));
+    for (const x of list) sel.append(new Option(x.title, x.id));
+    sel.onchange = () => sel.value && onPick(sel.value);
+    box.append(sel);
+    return box;
+  }
+
+  // ===========================================================================
+  // Tile: Playlist
+  // ===========================================================================
+  function createPlaylist(tile, config) {
+    let id = config.id || null;
+    let autoFirst = !!config.autoFirst;
+    let choosing = false;
+
+    tile.addAction("⇄", "Show a different playlist in this tile", () => {
+      choosing = !choosing;
+      render();
+    });
+
+    function pick(newId) {
+      id = newId;
+      autoFirst = false;
+      choosing = false;
+      tile.changed();
+      render();
+      window.dispatchEvent(new Event("board-changed"));
+    }
+
+    function render() {
+      if (!id && autoFirst && library.playlists.length) return pick(library.playlists[0].id);
+      const pl = playlistById(id);
+      tile.body.innerHTML = "";
+      if (!pl || choosing) {
+        tile.setTitle(pl ? pl.title : "Playlist");
+        tile.body.append(chooser(tile, "playlist", pick));
+        if (!pl) return;
+      }
+      tile.setTitle(pl.title);
+
+      const bar = el("div", "tile-toolbar");
+      const play = el("button", "primary small", "▶ Play all");
+      play.onclick = () => command("/v1/playlist/play", "PUT", { id: pl.id });
+      bar.append(play, el("span", "hint", `${pl.tracks.length} track${pl.tracks.length === 1 ? "" : "s"}`));
+      const list = el("ol", "track-list");
+      pl.tracks.forEach((tid) => {
+        const t = trackById(tid);
+        if (!t) return;
+        const li = el("li");
+        li.dataset.id = tid;
+        const b = el("button", "track", t.title);
+        b.title = "Play this track";
+        b.onclick = () => command("/v1/playlist/play", "PUT", { id: tid });
+        li.append(b);
+        list.append(li);
+      });
+      if (!pl.tracks.length) list.append(el("li", "hint", "This playlist is empty."));
+      tile.body.append(bar, list);
+      highlight();
+    }
+
+    function highlight() {
+      const pl = playlistById(id);
+      const mine = !!pl && playback?.playlist?.id === pl.id;
+      tile.body.querySelectorAll(".track-list li").forEach((li) => {
+        li.classList.toggle("on", mine && playback?.track?.id === li.dataset.id);
+      });
+      tile.setStatus(mine && playback?.playing ? "● playing" : mine ? "paused" : "", "playing");
+    }
+
+    const offs = [on("library", render), on("playback", highlight)];
+    render();
+    return {
+      save: () => ({ id, ...(autoFirst ? { autoFirst } : {}) }),
+      destroy: () => offs.forEach((f) => f()),
+      playlistId: () => id,
+    };
+  }
+
+  // ===========================================================================
+  // Tile: Soundboard
+  // ===========================================================================
+  function createSoundboard(tile, config) {
+    let id = config.id || null;
+    let autoFirst = !!config.autoFirst;
+    let choosing = false;
+
+    tile.addAction("■", "Stop this soundboard's sounds", async () => {
+      const board = boardById(id);
+      if (!board) return;
+      const playing = board.sounds.filter((s) => playingSoundIds.has(s));
+      await Promise.all(playing.map((s) => api("/v1/soundboard/stop", "PUT", { id: s }).catch(() => {})));
+      pollSounds();
+    });
+    tile.addAction("⇄", "Show a different soundboard in this tile", () => {
+      choosing = !choosing;
+      render();
+    });
+
+    function pick(newId) {
+      id = newId;
+      autoFirst = false;
+      choosing = false;
+      tile.changed();
+      render();
+      window.dispatchEvent(new Event("board-changed"));
+    }
+
+    function render() {
+      if (!id && autoFirst && library.soundboards.length) return pick(library.soundboards[0].id);
+      const board = boardById(id);
+      tile.body.innerHTML = "";
+      if (!board || choosing) {
+        tile.setTitle(board ? board.title : "Soundboard");
+        tile.body.append(chooser(tile, "soundboard", pick));
+        if (!board) return;
+      }
+      tile.setTitle(board.title);
+      const pads = el("div", "pads");
+      for (const sid of board.sounds) {
+        const s = soundById(sid);
+        if (!s) continue;
+        const b = el("button", "pad");
+        b.dataset.id = sid;
+        b.append(el("span", "pad-name", s.title));
+        b.append(el("small", "pad-sub", s.loop ? "↻ loop" : "one-shot"));
+        b.title = s.title + (s.loop ? " (loops)" : "");
+        b.onclick = () => command(playingSoundIds.has(sid) ? "/v1/soundboard/stop" : "/v1/soundboard/play", "PUT", { id: sid });
+        pads.append(b);
+      }
+      if (!board.sounds.length) pads.append(el("div", "hint", "This soundboard is empty."));
+      tile.body.append(pads);
+      highlight();
+    }
+
+    function highlight() {
+      let n = 0;
+      tile.body.querySelectorAll(".pad").forEach((b) => {
+        const onNow = playingSoundIds.has(b.dataset.id);
+        b.classList.toggle("on", onNow);
+        if (onNow) n++;
+      });
+      tile.setStatus(n ? `● ${n} playing` : "", "playing");
+    }
+
+    const offs = [on("library", render), on("sounds", highlight)];
+    render();
+    return {
+      save: () => ({ id, ...(autoFirst ? { autoFirst } : {}) }),
+      destroy: () => offs.forEach((f) => f()),
+      boardId: () => id,
+    };
+  }
+
+  // ===========================================================================
+  // "+ Kenku" picker
+  // ===========================================================================
+  let addTab = Store.get("kenku.addTab", "playlists");
+
+  function onScreen(type, id) {
+    return Board.tiles(type).some((t) => t.config().id === id);
+  }
+
+  function renderAddDialog() {
+    const words = $("kenku-add-search").value.trim().toLowerCase();
+    const match = (...texts) => !words || texts.some((t) => (t || "").toLowerCase().includes(words));
+    document.querySelectorAll("#kenku-add-dialog [data-tab]").forEach((b) => b.classList.toggle("on", b.dataset.tab === addTab));
+    $("kenku-add-count-playlists").textContent = library.playlists.length;
+    $("kenku-add-count-soundboards").textContent = library.soundboards.length;
+
+    const box = $("kenku-add-list");
+    box.innerHTML = "";
+    const row = (icon, name, sub, mark, onClick) => {
+      const b = el("button", "pick-row");
+      b.type = "button";
+      const i = el("span", "pick-icon", icon);
+      const text = el("span", "pick-text");
+      text.append(el("b", "", name), el("small", "", sub));
+      b.append(i, text);
+      if (mark) b.append(el("span", "pick-mark", mark));
+      b.onclick = onClick;
+      box.append(b);
+    };
+    const add = (type, config) => {
+      $("kenku-add-dialog").close();
+      Board.add(type, config);
+    };
+
+    if (!loaded) box.append(el("p", "hint", "Waiting for Kenku… Is Kenku FM open with Remote switched on?"));
+
+    if (addTab === "nowplaying") {
+      row("▶", "Now playing", "Play/pause, skip, shuffle, repeat and volume for Kenku's playlist player",
+        Board.tiles("nowplaying").length ? "on screen" : "", () => add("nowplaying", {}));
+      return;
+    }
+    if (addTab === "playlists") {
+      const list = library.playlists.filter((p) => match(p.title, ...p.tracks.map((t) => trackById(t)?.title)));
+      for (const p of list) {
+        const names = p.tracks.slice(0, 3).map((t) => trackById(t)?.title).filter(Boolean);
+        row("🎵", p.title, `${p.tracks.length} tracks${names.length ? " · " + names.join(", ") : ""}`,
+          onScreen("playlist", p.id) ? "on screen" : "", () => add("playlist", { id: p.id }));
+      }
+      if (loaded && !list.length) box.append(el("p", "hint", words ? "No playlists match." : "Kenku has no playlists yet."));
+      return;
+    }
+    const list = library.soundboards.filter((b) => match(b.title, ...b.sounds.map((s) => soundById(s)?.title)));
+    for (const b of list) {
+      const names = b.sounds.slice(0, 4).map((s) => soundById(s)?.title).filter(Boolean);
+      row("🎛", b.title, `${b.sounds.length} sounds${names.length ? " · " + names.join(", ") : ""}`,
+        onScreen("soundboard", b.id) ? "on screen" : "", () => add("soundboard", { id: b.id }));
+    }
+    if (loaded && !list.length) box.append(el("p", "hint", words ? "No soundboards match." : "Kenku has no soundboards yet."));
+  }
+
+  function openAddDialog() {
+    $("kenku-add-search").value = "";
+    renderAddDialog();
+    $("kenku-add-dialog").showModal();
+    $("kenku-add-search").focus();
+    loadLibrary().then(renderAddDialog); // pick up anything new in Kenku
+  }
+
+  // ===========================================================================
   function init() {
-    wireControls();
+    // Heights are in 20px rows.
+    Board.register("nowplaying", { badge: "Kenku", badgeClass: "k", fitContent: true, size: { w: 7, h: 4, minW: 3, minH: 3 }, create: createNowPlaying });
+    Board.register("playlist", { badge: "Playlist", badgeClass: "k", size: { w: 3, h: 14, minW: 2, minH: 5 }, create: createPlaylist });
+    Board.register("soundboard", { badge: "Soundboard", badgeClass: "k", size: { w: 4, h: 10, minW: 2, minH: 5 }, create: createSoundboard });
+
+    $("add-kenku").addEventListener("click", openAddDialog);
+    $("kenku-add-close").addEventListener("click", () => $("kenku-add-dialog").close());
+    $("kenku-add-search").addEventListener("input", renderAddDialog);
+    document.querySelectorAll("#kenku-add-dialog [data-tab]").forEach((b) => {
+      b.addEventListener("click", () => {
+        addTab = b.dataset.tab;
+        Store.set("kenku.addTab", addTab);
+        renderAddDialog();
+      });
+    });
+
     loadLibrary();
     pollPlayback();
     pollSounds();
@@ -258,6 +478,7 @@ const KenkuPanel = (() => {
   return {
     init,
     reload: loadLibrary,
+    on,
     // Used by Scenes:
     api,                                        // raw call to Kenku through the helper
     library: () => library,                     // playlists, tracks, soundboards, sounds

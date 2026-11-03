@@ -32,12 +32,13 @@
     status.title = tip;
   }
 
-  Layout.init();
+  // Tile types register themselves first, then the board builds the saved layout.
   KenkuPanel.init();
   YouTubePanel.init();
   EmbedPanel.init();
-  SoundsPanel.init();
   Links.init();
+  Board.init();
+  SoundsPanel.init();
   Settings.init();
   Scenes.init();
   Vibe.init();

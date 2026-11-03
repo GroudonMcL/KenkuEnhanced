@@ -5,19 +5,30 @@ A dashboard for [Kenku FM](https://github.com/owlbear-rodeo/kenku-fm) that you o
 
 - **Scenes**: one click (or a number key) switches music, soundboard sounds and YouTube
   together, with smooth fades.
-- **Kenku control**: your playlists and soundboards as big buttons, play/pause/stop/next,
-  volume, and what's playing now.
-- **YouTube players**: as many as you like, each with its own volume and loop, so you can layer
+- **Tiles on a grid**: everything is a tile you can drag, resize, collapse and close.
+  Add tiles with **＋ Kenku**, **＋ YouTube** and **＋ Website** in the top bar.
+- **Kenku tiles**: *Now playing* (play/pause/stop/next, shuffle, repeat, volume), one tile per
+  **playlist** (click a track to play it) and one per **soundboard** (sounds as pads).
+- **YouTube tiles**: as many as you like, each with its own volume and loop, so you can layer
   ambience under music. Paste a link, or **search YouTube** right in the dashboard.
-- **Website panel**: embed any site that allows it (with a clear message when it doesn't),
-  plus **saved link buttons** and a browser for **Tabletop Audio's SoundPads**.
+- **Website tiles**: embed any site that allows it (sites that don't get an "open in a Kenku
+  tab" button instead), plus **saved links** and a browser for **Tabletop Audio's SoundPads**.
 - **✨ Vibe**: show it a picture (a map, scene art) or type a few words, and it suggests
   matching scenes, Tabletop Audio SoundPads and sound / YouTube searches.
-- **Sound search**: search Freesound, listen to a preview, and download sounds straight into a
+- **🔎 Find sounds**: search Freesound, listen to a preview, and download sounds straight into a
   folder on your PC, with the credits written down for you.
 
-You can drag the panels to resize them and show or hide each one. The dashboard remembers
-your layout and links.
+The dashboard remembers your tiles and links.
+
+### Arranging tiles
+- **Move** a tile by dragging its title bar. **Resize** it from its edges or the corner mark.
+- **▾** collapses a tile to just its title bar (it keeps playing); **▸** opens it again.
+  **✕** closes it.
+- Tiles name themselves after what they show (the video, playlist, soundboard or page).
+  **Double-click a name** to give it your own; clear it to go back to the automatic name.
+- **🔒** in the top bar locks the layout so nothing moves by accident during a session.
+  **⟲** puts the default tiles back.
+- On a narrow screen (a tablet or phone) the tiles stack in one column.
 
 ```
 Kenku FM ── built-in browser ──► http://localhost:4000 (this dashboard)
@@ -166,13 +177,14 @@ How it works, and what to expect:
 - The first picture after starting the dashboard is slower, while the model loads.
 
 ## Links and Tabletop Audio
-The **Website** panel keeps your favourite sites as buttons.
+Click **＋ Website** to add a Website tile: type an address, or pick one of your saved links or
+a Tabletop Audio SoundPad.
 
-- **Save a link:** type or paste an address in the box at the top and click **☆ Save**. Give it a
-  name and choose where it opens:
-  - **Automatic** (normal): inside the Website panel if the site allows it, otherwise in a new
+- **Save a link:** type or paste an address in the box at the top and click **☆ Save link** (or
+  click **☆** in a Website tile's title bar). Give it a name and choose where it opens:
+  - **Automatic** (normal): in a Website tile if the site allows it, otherwise in a new
     Kenku tab. The dashboard remembers which sites refuse.
-  - **The Website panel** or **A new Kenku tab** to force one or the other.
+  - **A Website tile** or **A new Kenku tab** to force one or the other.
   Buttons that open a new tab have a **↗** after their name.
 - **Change, reorder or delete links:** click **✎ Edit links**, then click a link.
 - **🎲 SoundPads** shows all of Tabletop Audio's SoundPads with pictures. You can filter them by
@@ -180,20 +192,20 @@ The **Website** panel keeps your favourite sites as buttons.
   your links, so scenes can use it.
 
 **Why SoundPads open in a new tab:** Tabletop Audio doesn't allow its site to be shown inside
-other pages, so it can't sit in the Website panel. A new Kenku tab is just as good, because Kenku
+other pages, so it can't sit in a Website tile. A new Kenku tab is just as good, because Kenku
 sends the sound of every tab to Discord. Switch back to the dashboard tab to keep using it.
 
-**🧪 Experimental: SoundPads inside the Website panel.** In **⚙ Settings → Experimental**, tick
-**Show Tabletop Audio inside the Website panel** and click **Save** (no restart needed). The helper
+**🧪 Experimental: SoundPads inside Website tiles.** In **⚙ Settings → Experimental**, tick
+**Show Tabletop Audio inside Website tiles** and click **Save** (no restart needed). The helper
 then passes Tabletop Audio pages *and their sounds* through this PC (on the dashboard's port + 1,
 e.g. `http://localhost:4001`) and leaves out the "don't embed me" header, so SoundPads load right
-in the panel and the **🎲 SoundPads → ▶ Open** buttons open there too. Please keep in mind:
+in a tile, and the **🎲 SoundPads** buttons say **＋ Add tile**. Please keep in mind:
 - It works around a choice Tabletop Audio made on purpose (no embedding, and their sound server
   only serves their own site). Use it for your own table only and don't share the address.
 - It can stop working whenever they change their site. Untick it to go back to new tabs.
 - Nothing is downloaded or stored: every sound still comes live from Tabletop Audio.
 
-![A SoundPad playing in the Website panel](docs/screenshots/tta-passthrough-2-playing.png)
+![A SoundPad playing inside the dashboard](docs/screenshots/tta-passthrough-2-playing.png)
 
 **Your own Custom SoundPad:** open **Custom SoundPad**, build your mix, click **Get Link** on
 Tabletop Audio, then paste that link into the address box here and click **☆ Save** (or paste it
@@ -224,7 +236,7 @@ you, and saving fixes it. The broken copy is kept as `config.broken.json`.
 |---|---|
 | `port` | Dashboard port (default 4000) |
 | `kenku.host` / `kenku.port` | Must match Kenku → Settings → Remote |
-| `downloadsFolder` | where the Sound search panel saves sounds (and `ATTRIBUTION.csv`) |
+| `downloadsFolder` | where 🔎 Find sounds saves sounds (and `ATTRIBUTION.csv`) |
 | `apiKeys.youtube` | YouTube search key (see below) |
 | `apiKeys.freesound` | Sound search key (see below) |
 | `apiKeys.pixabay` | not used yet (Pixabay has no sound API) |
@@ -252,7 +264,7 @@ same search repeated within 30 minutes is free, because the helper remembers the
 Search only shows videos that allow embedding.
 
 ## Sound search (optional, free)
-The **Sounds** panel searches [Freesound](https://freesound.org), a huge library of free sound
+**🔎 Find sounds** (in the scenes bar) searches [Freesound](https://freesound.org), a huge library of free sound
 effects and ambiences shared under Creative Commons licences. You need a free API key once:
 
 1. Make a free account at <https://freesound.org> and confirm your email.

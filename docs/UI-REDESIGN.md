@@ -81,8 +81,14 @@ Tested 2026-11-03:
   scene and offers "↗ Open in a Kenku tab" (its sound still reaches Discord).
 
 ## Build order (proposal)
-1. Grid + tile framework (gridstack, collapse, lock, titles), Now playing / Playlist /
-   Soundboard / YouTube / Website tiles reusing today's panel code.
+1. ✅ **Built.** Grid + tile framework (gridstack, collapse, lock, titles), Now playing / Playlist /
+   Soundboard / YouTube / Website tiles reusing today's panel code. Notes:
+   - Rows are 20px (a collapsed tile = 2 rows), so heights can be fine-tuned.
+   - Now playing sizes its height to its contents; you set only its width.
+   - First versions of the three Add dialogs came along (needed once the panels were gone);
+     🔎 Find sounds is already a pop-up.
+   - Old scenes still work on top of the tiles until step 3 replaces them.
+   - The layout is stored in this browser (`localStorage`), not yet per scene.
 2. Add dialogs (Kenku, YouTube with search, Website with Tabletop Audio browser + presets).
 3. Scenes as layouts: tabs, auto-save, undo, ▶ auto, smart crossfade.
 4. General pass-through for myNoise / Rainy Mood (+ try Ambient-Mixer), mobile UA, launcher tile.
