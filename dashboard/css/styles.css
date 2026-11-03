@@ -232,6 +232,9 @@ body:not(.board-locked) #board {
   font-size: .76rem; font-weight: 600; letter-spacing: 0;
   padding: 1px 6px; border-radius: 5px; flex: none; line-height: 1.35;
 }
+/* tiles show a small mark for their type instead of the word (the word is the tooltip) */
+.tile-badge.icon { display: inline-grid; place-items: center; padding: 3px 4px; cursor: help; }
+.tile-badge.icon .i { width: 13px; height: 13px; stroke-width: 2; }
 .b-k { background: rgba(240, 164, 58, .12); color: #f6b964; }
 .b-y { background: rgba(240, 82, 82, .12); color: #ff8f8f; }
 .b-w { background: rgba(56, 189, 248, .12); color: #7dd3fc; }
@@ -263,6 +266,12 @@ body:not(.board-locked) #board {
   display: flex; flex-direction: column; gap: 6px; container-type: inline-size;
 }
 .collapsed .tile-body { flex: 0 0 0; padding: 0; overflow: hidden; } /* clipped, still playing */
+/* A collapsed YouTube tile keeps its ▶ / loop / volume row; the video is clipped away (still playing) */
+[data-type=youtube].collapsed .tile-head { border-bottom: 1px solid var(--border); }
+[data-type=youtube].collapsed .tile-body { flex: 1 1 auto; padding: 5px 8px; justify-content: center; }
+[data-type=youtube].collapsed .yt-frame { flex: 0 0 0; min-height: 0; height: 0; }
+[data-type=youtube].collapsed .yt-form, [data-type=youtube].collapsed .yt-message { display: none; }
+[data-type=youtube].collapsed .yt-deck { gap: 0; justify-content: center; }
 .tile-body.flush { padding: 0; }
 .tile-body.flush > * { padding: 7px 8px; }
 

@@ -19,6 +19,12 @@ const Icons = (() => {
     link: `<path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/>`,
     search: `<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>`,
     zoom: `<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5M8 11h6"/>`,
+    // tile-type marks in the title bar
+    video: `<rect x="2.5" y="5" width="19" height="14" rx="3.5"/><path ${F} d="M10 9.2v5.6a.5.5 0 0 0 .76.43l4.5-2.8a.5.5 0 0 0 0-.86l-4.5-2.8a.5.5 0 0 0-.76.43z"/>`,
+    globe: `<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18a14 14 0 0 1 0-18z"/>`,
+    music: `<path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>`,
+    pads: `<rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/>`,
+    bars: `<path d="M5 20v-8M10 20V5M15 20v-11M20 20v-6"/>`,
   };
   const svg = (name) => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${P[name] || ""}</svg>`;
   function set(el, name, text = "") {

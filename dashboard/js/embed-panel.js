@@ -230,8 +230,10 @@ const EmbedPanel = (() => {
     tile.addAction("↗", "Open in a new Kenku tab", () => openNewTab(shownUrl));
 
     // Zoom: show the page smaller so more of it fits in the tile (works for any site).
+    // New tiles start at 55%.
     const ZOOMS = [1, 0.85, 0.7, 0.55];
-    let zoom = ZOOMS.includes(config.zoom) ? config.zoom : 1;
+    const DEFAULT_ZOOM = 0.55;
+    let zoom = ZOOMS.includes(config.zoom) ? config.zoom : DEFAULT_ZOOM;
     const zoomBtn = tile.addAction("", "", () => {
       zoom = ZOOMS[(ZOOMS.indexOf(zoom) + 1) % ZOOMS.length];
       applyZoom();
@@ -250,7 +252,7 @@ const EmbedPanel = (() => {
       url: () => shownUrl,
       rename: () => shownUrl && tile.setTitle(nameFor(shownUrl, pageTitle)),
       tile,
-      save: () => ({ url: shownUrl, ...(zoom !== 1 ? { zoom } : {}) }),
+      save: () => ({ url: shownUrl, zoom }),
       destroy: () => {
         frame.src = "about:blank";
         instances.splice(instances.indexOf(inst), 1);
@@ -290,7 +292,8 @@ const EmbedPanel = (() => {
 
   let ready;
   function init() {
-    Board.register("website", { badge: "Website", badgeClass: "w",
+    Board.register("website", { badge: "Website", badgeClass: "w", icon: "globe",
+      keepSize: true, // a scene switch that keeps this page keeps its size too
       // the same page in two scenes = the same tile (keeps playing)
       key: (c) => normalise(c.url || "").replace(/\/$/, ""),
       size: { w: 5, h: 18, minW: 2, minH: 6 }, // 20px rows

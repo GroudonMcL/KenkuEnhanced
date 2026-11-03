@@ -18,8 +18,10 @@
 // Board.register(type, definition); see kenku-panel.js, youtube-panel.js and
 // embed-panel.js. A definition looks like:
 //
-//   { badge: "YouTube", badgeClass: "y",
+//   { badge: "YouTube", badgeClass: "y", icon: "video", // icon = the mark in the title bar (icons.js)
 //     size: { w: 4, h: 6, minW: 2, minH: 3 },
+//     collapsedRows: 4,            // height when collapsed (default: just the title bar)
+//     keepSize: true,              // kept by a scene switch → keeps its current size
 //     autoable: true,              // show the "▶ auto" switch
 //     fitContent: false,           // height follows the content
 //     key(config) → "yt:abc",      // tiles with the same key are "the same thing"
@@ -37,6 +39,7 @@ const Board = (() => {
   const CELL = 20;      // row height in px – small, so tile heights can be fine-tuned
   const GAP = 3;        // gridstack margin around each tile (so 6px between tiles)
   const COLLAPSED = 2;  // rows of a collapsed tile: 2 × 20px − margins = 34px, just the title bar
+  const collapsedH = (def) => def.collapsedRows || COLLAPSED;
 
   function register(type, def) {
     TYPES[type] = def;
@@ -48,9 +51,10 @@ const Board = (() => {
   // ===========================================================================
   // One tile
   // ===========================================================================
-  function buildTileElement(def) {
+  function buildTileElement(type, def) {
     const item = document.createElement("div");
     item.className = "grid-stack-item";
+    item.dataset.type = type;
     item.innerHTML = `
       <div class="grid-stack-item-content tile">
         <div class="tile-head">
@@ -65,7 +69,14 @@ const Board = (() => {
         <div class="tile-body"></div>
       </div>`;
     const badge = item.querySelector(".tile-badge");
-    badge.textContent = def.badge;
+    if (def.icon && Icons.has(def.icon)) {
+      badge.innerHTML = Icons.svg(def.icon); // a small mark instead of the word – saves room
+      badge.classList.add("icon");
+      badge.title = def.badge;
+      badge.setAttribute("aria-label", def.badge);
+    } else {
+      badge.textContent = def.badge;
+    }
     badge.classList.add("b-" + (def.badgeClass || "k"));
     return item;
   }
@@ -74,7 +85,7 @@ const Board = (() => {
   function add(type, config = {}, saved = {}) {
     const def = TYPES[type];
     if (!def) return null;
-    const el = buildTileElement(def);
+    const el = buildTileElement(type, def);
     const q = (sel) => el.querySelector(sel);
     const size = def.size || { w: 4, h: 5 };
 
@@ -185,7 +196,7 @@ const Board = (() => {
       showCollapsed(on);
       if (!grid || !el.gridstackNode) return;
       grid.update(el, on
-        ? { h: COLLAPSED, minH: COLLAPSED, noResize: true, sizeToContent: false }
+        ? { h: collapsedH(def), minH: collapsedH(def), noResize: true, sizeToContent: false }
         : { h: Math.max(tile.expandedH || size.h, size.minH || 4), minH: size.minH || 4, noResize: false, sizeToContent: !!def.fitContent });
       if (!on) tile.fit();
       save();
@@ -255,13 +266,13 @@ const Board = (() => {
   function widgetOpts(def, saved) {
     const size = def.size || { w: 4, h: 5 };
     const pos = saved.w
-      ? { x: saved.x, y: saved.y, w: saved.w, h: saved.collapsed ? COLLAPSED : saved.h }
+      ? { x: saved.x, y: saved.y, w: saved.w, h: saved.collapsed ? collapsedH(def) : saved.h }
       : { w: size.w, h: size.h, autoPosition: true };
     return {
       ...pos,
       id: saved.id,
       minW: size.minW || 2,
-      minH: saved.collapsed ? COLLAPSED : size.minH || 4,
+      minH: saved.collapsed ? collapsedH(def) : size.minH || 4,
       noResize: !!saved.collapsed,
       // fitContent tiles (Now playing) grow/shrink to fit what's in them
       sizeToContent: !!def.fitContent && !saved.collapsed,
@@ -351,13 +362,23 @@ const Board = (() => {
         t.dispose = () => {};
       };
     }
-    // Kept tiles take the new layout's place, size and settings.
+    // Kept tiles take the new layout's place and settings. Their size too – except
+    // keepSize tiles (YouTube, websites), which keep the size you last gave them.
     for (const { tile, item } of kept) {
+      const node = tile.el.gridstackNode;
+      const size = tile.def.keepSize && node
+        ? { w: node.w, h: tile.collapsed ? tile.expandedH : node.h }
+        : null;
       tiles.delete(tile.id);
       tile.id = item.id || newId();
       tiles.set(tile.id, tile);
       tile.applySaved(item);
-      grid.update(tile.el, widgetOpts(tile.def, { ...item, id: tile.id }));
+      let place = { ...item, id: tile.id };
+      if (size) {
+        tile.expandedH = size.h;
+        place = { ...place, w: size.w, h: size.h };
+      }
+      grid.update(tile.el, widgetOpts(tile.def, place));
       if (tile.el.gridstackNode) tile.el.gridstackNode.id = tile.id; // snapshot() matches tiles by this id
     }
     // New tiles

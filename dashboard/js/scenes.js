@@ -12,7 +12,9 @@
 //     video, the same SoundPad page, a Kenku sound whose soundboard is in both,
 //     the playlist that's playing if the new scene has a tile for it);
 //   • everything else fades out;
-//   • the new scene's ▶ auto items fade in (YouTube tiles, one playlist, soundboard sounds).
+//   • the new scene's ▶ auto items fade in (YouTube tiles, one playlist, soundboard sounds);
+//   • YouTube tiles that were playing when you last left the new scene fade back in,
+//     from where they were.
 // A small note at the bottom shows what's happening.
 
 const Scenes = (() => {
@@ -233,11 +235,25 @@ const Scenes = (() => {
   // Kenku playlist volume, 0-1
   const kenkuVolume = (v) => K.api("/v1/playlist/playback/volume", "PUT", { volume: Math.round(v * 100) / 100 }).catch(() => {});
 
+  // Leaving a scene: note which YouTube tiles were playing (and how far in), so
+  // coming back to it starts them again from there.
+  function rememberPlaying(scene) {
+    const playing = new Map(YouTubePanel.decks().filter((d) => d.isPlaying()).map((d) => [d.tile.id, d]));
+    for (const item of scene?.layout?.items || []) {
+      const deck = item.type === "youtube" && playing.get(item.id);
+      if (deck) item.resume = deck.position() || { time: 0 };
+      else delete item.resume;
+    }
+  }
+
   async function activate(scene) {
     if (!scene) return;
     const token = ++runToken;
     const switching = scene.id !== activeId;
-    if (switching) Board.flush(); // the old scene gets its latest layout first
+    if (switching) {
+      Board.flush(); // the old scene gets its latest layout first
+      rememberPlaying(active());
+    }
     activeId = scene.id;
     busy = true;
     render();
@@ -259,6 +275,7 @@ const Scenes = (() => {
     const keepNames = [];
     const outNames = [];
     const inNames = [];
+    const resumeNames = [];
     const work = [];
     const { kept, added, leaving } = switching
       ? Board.applyLayout(scene.layout)
@@ -268,13 +285,15 @@ const Scenes = (() => {
     updateUndo();
     persistSoon();
 
-    // --- YouTube
-    const startDeck = async (deck, vol, name) => {
-      inNames.push(name);
+    // --- YouTube: ▶ auto tiles start; tiles that were playing when you last left
+    // this scene start again (new tiles from where they were, kept ones carry on).
+    const startDeck = async (deck, vol, name, resumeAt) => {
+      (resumeAt === undefined ? inNames : resumeNames).push(name);
       await deck.whenReady();
       if (token !== runToken) return;
       deck.setVolume(0, false);
-      deck.play();
+      if (resumeAt) deck.resume(resumeAt);
+      else deck.play();
       if (await ramp(0, vol, fadeMs, (v) => deck.setVolume(v, false), token)) deck.setVolume(vol, true);
     };
     for (const { tile, item } of kept) {
@@ -285,14 +304,16 @@ const Scenes = (() => {
         keepNames.push(tile.title());
         const from = deck.currentVolume();
         if (from !== vol) work.push(ramp(from, vol, fadeMs, (v) => deck.setVolume(v, false), token).then((done) => done && deck.setVolume(vol, true)));
-      } else if (item.auto && deck.saved.url) {
-        work.push(startDeck(deck, vol, tile.title()));
+      } else if ((item.auto || item.resume) && deck.saved.url) {
+        work.push(startDeck(deck, vol, tile.title(), item.resume && !item.auto ? null : undefined));
       }
     }
     // A website that's in both scenes was never reloaded, so whatever it plays carries on.
     for (const { tile } of kept) if (switching && tile.type === "website" && tile.config().url) keepNames.push(tile.title());
     for (const { tile, item } of added) {
-      if (tile.type === "youtube" && item.auto && item.config?.url) work.push(startDeck(tile.inst.deck, item.config.volume ?? 60, tile.title()));
+      if (tile.type === "youtube" && (item.auto || item.resume) && item.config?.url) {
+        work.push(startDeck(tile.inst.deck, item.config.volume ?? 60, tile.title(), item.resume || undefined));
+      }
     }
     for (const t of leaving) {
       if (t.type === "youtube" && t.inst.deck?.isPlaying()) {
@@ -357,6 +378,7 @@ const Scenes = (() => {
     toast(scene, [
       ["keep", "keeps playing", keepNames],
       ["out", "fading out", outNames],
+      ["in", "picks up where it left off", resumeNames],
       ["in", "▶ auto – fading in", inNames],
     ], fadeMs + 3000);
 
