@@ -112,4 +112,10 @@ Tested 2026-11-03:
    for myNoise (ogg via mynoise.world), Ambient-Mixer (mix XML + 8 MP3s), Rainy Mood, Tabletop Audio.
    - Mobile version (mobile User-Agent per site): makes little difference for these four (only
      Rainy Mood changes slightly), so Website tiles also got a 🔍 zoom (100/85/70/55 %).
-5. Find sounds + Vibe as dialogs; README/screenshots.
+5. ✅ **Built.** 🔎 Find sounds and ✨ Vibe as pop-ups in the same style as the pickers. Find
+   sounds: search / length / sort on one row, preview volume and save folder on the next. Vibe:
+   picture and words side by side; suggestions now include your Kenku playlists and soundboards
+   (add a tile) and Tabletop Audio SoundPads *and* ambience tracks as picture cards (add a Website
+   tile), plus scenes and ready-made searches. README rewritten for tiles/scenes, new screenshots.
+
+**The redesign is complete.**

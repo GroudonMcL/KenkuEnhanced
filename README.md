@@ -3,22 +3,26 @@
 A dashboard for [Kenku FM](https://github.com/owlbear-rodeo/kenku-fm) that you open
 **inside Kenku's own browser**, so everything it plays goes to Discord. One screen with:
 
-- **Scenes**: one click (or a number key) switches music, soundboard sounds and YouTube
-  together, with smooth fades.
+- **Scenes**: each scene is a saved board of tiles. One click (or a number key) switches to it:
+  what's in both scenes keeps playing, the rest fades out, and its **▶ auto** items fade in.
 - **Tiles on a grid**: everything is a tile you can drag, resize, collapse and close.
   Add tiles with **＋ Kenku**, **＋ YouTube** and **＋ Website** in the top bar.
 - **Kenku tiles**: *Now playing* (play/pause/stop/next, shuffle, repeat, volume), one tile per
   **playlist** (click a track to play it) and one per **soundboard** (sounds as pads).
 - **YouTube tiles**: as many as you like, each with its own volume and loop, so you can layer
   ambience under music. Paste a link, or **search YouTube** right in the dashboard.
-- **Website tiles**: embed any site that allows it (sites that don't get an "open in a Kenku
-  tab" button instead), plus **saved links** and a browser for **Tabletop Audio's SoundPads**.
+- **Website tiles**: Tabletop Audio SoundPads and ambience tracks, myNoise, Ambient-Mixer and other
+  ambience sites, your saved links, or any address. Sites that refuse to be embedded get an "open in
+  a Kenku tab" button, or (experimental) can be passed through the helper so they show anyway.
 - **✨ Vibe**: show it a picture (a map, scene art) or type a few words, and it suggests
-  matching scenes, Tabletop Audio SoundPads and sound / YouTube searches.
+  matching scenes, your Kenku playlists and soundboards, Tabletop Audio SoundPads and tracks, and
+  sound / YouTube searches.
 - **🔎 Find sounds**: search Freesound, listen to a preview, and download sounds straight into a
   folder on your PC, with the credits written down for you.
 
-The dashboard remembers your tiles and links.
+Everything you change is saved by itself (into the scene that's showing).
+
+![The dashboard](docs/screenshots/tiles-board.png)
 
 ### Arranging tiles
 - **Move** a tile by dragging its title bar. **Resize** it from its edges or the corner mark.
@@ -27,7 +31,7 @@ The dashboard remembers your tiles and links.
 - Tiles name themselves after what they show (the video, playlist, soundboard or page).
   **Double-click a name** to give it your own; clear it to go back to the automatic name.
 - **🔒** in the top bar locks the layout so nothing moves by accident during a session.
-  **⟲** puts the default tiles back.
+  **⟲** puts the default tiles back in the current scene.
 - On a narrow screen (a tablet or phone) the tiles stack in one column.
 
 ```
@@ -134,7 +138,10 @@ current scene (the same tiles) or as an empty board. Then arrange its tiles.
 - the new scene's **▶ auto** items **fade in**. The music fades to the volume you last set in
   that scene's *Now playing* tile.
 
-A small note at the bottom shows what's keeping, fading out and fading in. Clicking the scene
+A small note at the bottom shows what's keeping, fading out and fading in:
+
+![Switching scenes](docs/screenshots/scenes-switch.png)
+ Clicking the scene
 that's already showing starts its ▶ auto items again.
 
 | Key | Does |
@@ -169,10 +176,15 @@ Click **✨ Vibe** in the scenes bar. Then either:
 From a picture, it fills in **Words** with what it sees: a place (tavern, forest, cave,
 spaceship…), weather (rain, storm, fog…), night, and a mood (calm, tense, scary, epic…). Change the
 words however you like; the suggestions update as you type:
-- **Your scenes** that match. Click one to start it.
-- **＋ New scene with these tags**: saves what's playing now as a scene with these words as its tags.
-- **Tabletop Audio SoundPads** that fit.
-- **Search for sounds** (Freesound) and **Search YouTube** buttons with ready-made searches.
+- **Your scenes** that match. Click one to switch to it.
+- **＋ New scene with these tags**: a new scene (a copy of this one) with these words as its tags.
+- **In Kenku**: your playlists and soundboards whose names (or track / sound names) fit. Click to
+  add a tile (✓ = already on the board).
+- **Tabletop Audio**: SoundPads and ambience tracks that fit, with pictures. Click to add a
+  Website tile.
+- **Search**: ready-made Freesound (🔎) and YouTube (▶) searches.
+
+![Vibe](docs/screenshots/vibe.png)
 
 **Tags make matching work.** In a scene's settings (double-click its tab) there's a
 **Tags** box. Type words that describe the scene, separated by commas, e.g.
@@ -244,8 +256,6 @@ of it fits in the tile. Each tile remembers its zoom.
 
 ![Ambient-Mixer, myNoise and Rainy Mood inside tiles](docs/screenshots/passthrough-sites.png)
 
-![A SoundPad playing inside the dashboard](docs/screenshots/tta-passthrough-2-playing.png)
-
 **Your own Custom SoundPad:** in **＋ Website → My Custom SoundPads**, add *Make a new Custom
 SoundPad*, build your mix, click **Get Link** on Tabletop Audio, then paste that link into the
 **＋ Website** search box and click **☆ Save link** (or paste it
@@ -305,7 +315,13 @@ Search only shows videos that allow embedding.
 
 ## Sound search (optional, free)
 **🔎 Find sounds** (in the scenes bar) searches [Freesound](https://freesound.org), a huge library of free sound
-effects and ambiences shared under Creative Commons licences. You need a free API key once:
+effects and ambiences shared under Creative Commons licences. Choose a length and sort order,
+click a waveform to preview from that point, and **⬇ Download** saves the sound into your
+downloads folder (optionally a subfolder) with its credits in `ATTRIBUTION.csv`.
+
+![Find sounds](docs/screenshots/find-sounds.png)
+
+You need a free API key once:
 
 1. Make a free account at <https://freesound.org> and confirm your email.
 2. Open <https://freesound.org/apiv2/apply/>, fill in a name (e.g. `KenkuEnhanced`) and a short

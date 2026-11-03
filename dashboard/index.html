@@ -175,40 +175,36 @@
       <button type="button" id="sounds-close" class="icon-btn" title="Close">✕</button></div>
     <div class="picker-main sounds-main">
 
-      <form id="snd-search-form" class="url-row">
+      <form id="snd-search-form" class="url-row snd-search-row">
         <input id="snd-search" type="search" placeholder="Search Freesound (e.g. tavern crowd)" autocomplete="off">
-        <button type="submit" class="mid primary">Search</button>
+        <select id="snd-length" aria-label="Length" title="Length">
+          <option value="any">Any length</option>
+          <option value="short">Short effect (under 10 s)</option>
+          <option value="medium">10 s – 2 min</option>
+          <option value="long">Long ambience (over 2 min)</option>
+        </select>
+        <select id="snd-sort" aria-label="Sort" title="Sort">
+          <option value="score">Best match</option>
+          <option value="downloads_desc">Most downloaded</option>
+          <option value="rating_desc">Highest rated</option>
+          <option value="duration_asc">Shortest first</option>
+          <option value="created_desc">Newest</option>
+        </select>
+        <button type="submit" class="primary">Search</button>
       </form>
-      <div class="field-row snd-filters">
-        <label>Length
-          <select id="snd-length">
-            <option value="any">Any length</option>
-            <option value="short">Short effect (under 10 s)</option>
-            <option value="medium">10 s – 2 min</option>
-            <option value="long">Long ambience (over 2 min)</option>
-          </select></label>
-        <label>Sort
-          <select id="snd-sort">
-            <option value="score">Best match</option>
-            <option value="downloads_desc">Most downloaded</option>
-            <option value="rating_desc">Highest rated</option>
-            <option value="duration_asc">Shortest first</option>
-            <option value="created_desc">Newest</option>
-          </select></label>
-      </div>
-      <!-- Preview player (one at a time). In Kenku's browser it reaches Discord too. -->
-      <div class="volume-row snd-preview-row">
-        <span class="label" title="Previews play through this page, so in Kenku your players hear them too">Preview volume</span>
-        <input id="snd-preview-volume" type="range" min="0" max="100" step="1" value="60" aria-label="Preview volume">
-        <span id="snd-preview-volume-value" class="volume-value">60%</span>
-      </div>
-
-      <div class="snd-save">
-        <label>Save into subfolder (optional)
-          <input id="snd-subfolder" type="text" list="snd-subfolders" maxlength="60"
-                 placeholder="e.g. Ambience" autocomplete="off" spellcheck="false"></label>
-        <datalist id="snd-subfolders"></datalist>
-        <button id="snd-open-folder" type="button" class="mid" title="Open this folder on your PC">📂 Open folder</button>
+      <div class="snd-options">
+        <!-- Preview player (one at a time). In Kenku's browser it reaches Discord too. -->
+        <div class="volume-row snd-preview-row">
+          <span class="label" title="Previews play through this page, so in Kenku your players hear them too">🔊 Preview</span>
+          <input id="snd-preview-volume" type="range" min="0" max="100" step="1" value="60" aria-label="Preview volume">
+          <span id="snd-preview-volume-value" class="volume-value">60%</span>
+        </div>
+        <div class="snd-save">
+          <input id="snd-subfolder" type="text" list="snd-subfolders" maxlength="60" aria-label="Save into subfolder (optional)"
+                 placeholder="Save into subfolder (optional), e.g. Ambience" autocomplete="off" spellcheck="false">
+          <datalist id="snd-subfolders"></datalist>
+          <button id="snd-open-folder" type="button" title="Open this folder on your PC">📂 Open folder</button>
+        </div>
       </div>
       <p id="snd-folder-hint" class="hint"></p>
       <div id="snd-message" class="notice" hidden></div>
@@ -310,32 +306,33 @@
   </dialog>
 
   <!-- ✨ Vibe (pop-up): picture or words → suggestions. vibe.js runs it. -->
-  <dialog id="vibe-dialog" class="dialog vibe-dialog">
-    <form method="dialog">
-      <h2>✨ Vibe</h2>
-      <p class="hint">Show it a picture (a map, scene art, a photo) or type a few words, and it suggests what to play.
-        Pictures are recognised on this PC – nothing is uploaded.</p>
-      <div id="vibe-drop" class="vibe-drop">
-        <img id="vibe-preview" alt="">
-        <div class="vibe-drop-text">
-          Drop a picture here, or paste one (Ctrl+V)<br>
-          <button type="button" id="vibe-choose" class="mid">🖼 Choose a picture…</button>
-          <input id="vibe-file" type="file" accept="image/*" hidden>
+  <dialog id="vibe-dialog" class="dialog picker-dialog wide vibe-dialog">
+    <div class="picker-head"><span class="tile-badge b-v">✨ Vibe</span><h2>What should this sound like?</h2>
+      <button type="button" id="vibe-close" class="icon-btn" title="Close">✕</button></div>
+    <div class="picker-main">
+      <div class="vibe-top">
+        <div id="vibe-drop" class="vibe-drop">
+          <img id="vibe-preview" alt="">
+          <div class="vibe-drop-text">
+            Drop a picture here, or paste one (Ctrl+V)<br>
+            <button type="button" id="vibe-choose" class="small">🖼 Choose a picture…</button>
+            <input id="vibe-file" type="file" accept="image/*" hidden>
+          </div>
+        </div>
+        <div class="vibe-inputs">
+          <label class="vibe-label">Words <span class="hint">– from the picture, or type your own, separated by commas</span>
+            <input id="vibe-words" type="text" placeholder="tavern, night, cheerful" autocomplete="off" spellcheck="false"></label>
+          <div id="vibe-url-form" class="url-row" role="group">
+            <input id="vibe-url" type="text" placeholder="…or paste a picture's web address" autocomplete="off">
+            <button type="button" id="vibe-url-go">Use</button>
+          </div>
+          <p class="hint">Pictures are recognised on this PC – nothing is uploaded.</p>
         </div>
       </div>
-      <div id="vibe-url-form" class="url-row" role="group">
-        <input id="vibe-url" type="text" placeholder="…or paste a picture's web address" autocomplete="off">
-        <button type="button" id="vibe-url-go" class="mid">Use</button>
-      </div>
       <div id="vibe-status" class="notice" hidden></div>
-      <label>Words <span class="hint">(from the picture – change them as you like, separated by commas)</span>
-        <input id="vibe-words" type="text" placeholder="tavern, night, cheerful" autocomplete="off" spellcheck="false"></label>
       <p id="vibe-scores" class="hint" hidden></p>
       <div id="vibe-results" class="vibe-results"></div>
-      <div class="dialog-buttons">
-        <button type="button" id="vibe-close" class="mid">Close</button>
-      </div>
-    </form>
+    </div>
   </dialog>
 
   <!-- Link editor (pop-up). links.js fills it in. -->

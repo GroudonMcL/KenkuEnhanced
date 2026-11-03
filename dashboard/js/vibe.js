@@ -1,7 +1,8 @@
 // vibe.js – Phase 5: Image → vibe.
 //
 // Give it a picture (a map, a scene illustration, a photo) or type some words,
-// and it suggests what to play: your matching scenes, Tabletop Audio SoundPads,
+// and it suggests what to play: your matching scenes, your Kenku playlists and
+// soundboards, Tabletop Audio SoundPads and ambience tracks (each adds a tile),
 // and ready-made Freesound / YouTube searches.
 //
 // Pictures are recognised in the browser by CLIP, an AI model that scores how
@@ -176,8 +177,9 @@ const Vibe = (() => {
     return { score, hits };
   }
 
+  // SoundPads and ambience tracks: name, description and categories
   function scoreSoundpad(pad, vibe) {
-    const hay = clean(`${pad.name} ${pad.description} ${pad.categories.join(" ")}`);
+    const hay = clean(`${pad.name} ${pad.description} ${pad.kind || ""} ${pad.categories.join(" ")}`);
     let score = 0;
     for (const v of vibe) {
       const e = entryFor(v);
@@ -264,6 +266,38 @@ const Vibe = (() => {
     return b;
   }
 
+  // A small picture card (SoundPads and tracks), like in the "+ Website" picker
+  function card(image, name, info, title, onClick) {
+    const c = document.createElement("button");
+    c.type = "button";
+    c.className = "pick-card vibe-card";
+    c.title = title || name;
+    const img = document.createElement("div");
+    img.className = "pick-img";
+    if (image) {
+      const i = document.createElement("img");
+      i.loading = "lazy";
+      i.alt = "";
+      i.src = image;
+      img.append(i);
+    }
+    const b = document.createElement("b");
+    b.textContent = name;
+    const small = document.createElement("small");
+    small.textContent = info;
+    c.append(img, b, small);
+    c.onclick = onClick;
+    return c;
+  }
+
+  const close = () => $("vibe-dialog").close();
+  const top = (list, score, n) => list
+    .map((x) => ({ x, score: score(x) }))
+    .filter((r) => r.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, n)
+    .map((r) => r.x);
+
   function showResults() {
     renderScores();
     const vibe = parseWords($("vibe-words").value).map(canonical);
@@ -273,83 +307,106 @@ const Vibe = (() => {
       out.innerHTML = '<p class="hint">Add a picture or type some words (e.g. <i>tavern, night, cheerful</i>) to get suggestions.</p>';
       return;
     }
-    const section = (title) => {
+    const section = (title, hint, cls = "vibe-row") => {
       const h = document.createElement("h3");
       h.textContent = title;
+      if (hint) {
+        const s = document.createElement("span");
+        s.className = "hint";
+        s.textContent = " – " + hint;
+        h.append(s);
+      }
       const row = document.createElement("div");
-      row.className = "vibe-row";
+      row.className = cls;
       out.append(h, row);
       return row;
     };
 
-    // Your scenes
+    // --- Your scenes
     const scenes = Scenes.list()
       .map((s) => ({ s, ...scoreScene(s, vibe) }))
       .filter((x) => x.score > 0)
       .sort((a, b) => b.score - a.score)
       .slice(0, 6);
-    const sceneRow = section("Your scenes");
+    const sceneRow = section("Your scenes", "click to switch");
     if (!scenes.length) {
-      sceneRow.innerHTML = '<span class="hint">No scene matches yet. Give your scenes tags (double-click a scene tab), or make one below.</span>';
+      const h = document.createElement("span");
+      h.className = "hint";
+      h.textContent = "No scene matches yet – give your scenes tags (double-click a scene tab).";
+      sceneRow.append(h);
     }
     for (const { s, hits } of scenes) {
-      const b = button(`▶ ${s.name}`, () => {
-        $("vibe-dialog").close();
-        Scenes.activate(s);
-      }, "mid vibe-scene");
+      const b = button(`▶ ${s.name}`, () => { close(); Scenes.activate(s); }, "small vibe-scene");
       b.style.setProperty("--scene-color", s.color || "#888");
       b.title = `Matches: ${hits.join(", ")}`;
       sceneRow.appendChild(b);
     }
-    sceneRow.appendChild(button("＋ New scene with these tags", () => {
-      $("vibe-dialog").close();
-      Scenes.createWithTags(vibe);
-    }, "mid"));
+    sceneRow.appendChild(button("＋ New scene with these tags", () => { close(); Scenes.createWithTags(vibe); }));
 
-    // Tabletop Audio SoundPads
-    const pads = Links.soundpads()
-      .map((p) => ({ p, score: scoreSoundpad(p, vibe) }))
-      .filter((x) => x.score > 0)
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 6);
-    if (pads.length) {
-      const padRow = section("Tabletop Audio SoundPads");
-      for (const { p } of pads) {
-        // A tile when the pass-through can show it, otherwise a Kenku tab
-        const inTile = !EmbedPanel.isBlocked(p.url);
-        const b = button(inTile ? `＋ ${p.name}` : `${p.name} ↗`, () => {
-          $("vibe-dialog").close?.();
-          Links.open(p.url, undefined, { newTile: true });
-        });
-        b.title = p.description;
-        padRow.appendChild(b);
+    // --- Kenku: your own playlists and soundboards
+    const lib = KenkuPanel.library();
+    const titleOf = (list, id) => list.find((x) => x.id === id)?.title || "";
+    const playlists = top(lib.playlists, (p) => scoreText(`${p.title} ${p.tracks.map((t) => titleOf(lib.tracks, t)).join(" ")}`, vibe), 4);
+    const boards = top(lib.soundboards, (b) => scoreText(`${b.title} ${b.sounds.map((x) => titleOf(lib.sounds, x)).join(" ")}`, vibe), 4);
+    if (playlists.length || boards.length) {
+      const row = section("In Kenku", "adds a tile");
+      const onScreen = (type, id) => Board.tiles(type).some((t) => t.config().id === id);
+      for (const p of playlists) {
+        const b = button(`🎵 ${p.title}${onScreen("playlist", p.id) ? " ✓" : ""}`, () => { close(); Board.add("playlist", { id: p.id }); });
+        b.title = `Playlist · ${p.tracks.length} tracks${onScreen("playlist", p.id) ? " · already on the board" : ""}`;
+        row.append(b);
+      }
+      for (const bd of boards) {
+        const b = button(`🎛 ${bd.title}${onScreen("soundboard", bd.id) ? " ✓" : ""}`, () => { close(); Board.add("soundboard", { id: bd.id }); });
+        b.title = `Soundboard · ${bd.sounds.length} sounds${onScreen("soundboard", bd.id) ? " · already on the board" : ""}`;
+        row.append(b);
       }
     }
 
-    // Searches
-    const searchRow = section("Search for sounds");
+    // --- Tabletop Audio: SoundPads and ambience tracks, as picture cards
+    const pads = top(Links.soundpads(), (p) => scoreSoundpad(p, vibe), 4);
+    const tracks = top(Links.tracks(), (t) => scoreSoundpad(t, vibe), 8);
+    if (pads.length || tracks.length) {
+      const blocked = EmbedPanel.isBlocked("https://tabletopaudio.com/");
+      const row = section("Tabletop Audio", blocked
+        ? "adds a tile that opens it in a Kenku tab (or switch on its pass-through in ⚙ Settings)"
+        : "adds a Website tile", "pick-cards vibe-cards");
+      const addTile = (url) => () => { close(); EmbedPanel.load(url, { newTile: true }); };
+      for (const p of pads) row.append(card(p.image, p.name, `SoundPad${p.sounds ? ` · ${p.sounds} sounds` : ""}`, p.description, addTile(p.url)));
+      for (const t of tracks.slice(0, 8 - pads.length)) row.append(card(t.image, t.name, t.kind, t.description, addTile(t.url)));
+    }
+
+    // --- Searches
+    const searchRow = section("Search", "opens a search");
     for (const v of vibe) {
       const e = entryFor(v);
       const q = e ? e.sound : v;
       if (!q) continue;
-      searchRow.appendChild(button(`🔎 ${q}`, () => {
-        $("vibe-dialog").close();
-        SoundsPanel.search(q);
-      }));
+      const b = button(`🔎 ${q}`, () => { close(); SoundsPanel.search(q); });
+      b.title = "Search Freesound (sounds you can download for Kenku)";
+      searchRow.appendChild(b);
     }
-    if (!searchRow.children.length) searchRow.innerHTML = '<span class="hint">Add a place or weather word to search for sounds.</span>';
-
-    const ytRow = section("Search YouTube");
     const placeish = vibe.filter((v) => ["place", "weather", "time"].includes(entryFor(v)?.group) || !entryFor(v));
     const moods = vibe.filter((v) => entryFor(v)?.group === "mood");
     const ambience = [...placeish.slice(0, 3), "ambience"].join(" ");
     const music = [...moods.slice(0, 1), ...placeish.slice(0, 1), "fantasy music"].join(" ");
     for (const q of [ambience, music]) {
-      ytRow.appendChild(button(`▶ ${q}`, () => {
-        $("vibe-dialog").close();
-        YouTubePanel.searchFor(q);
-      }));
+      const b = button(`▶ ${q}`, () => { close(); YouTubePanel.searchFor(q); });
+      b.title = "Search YouTube";
+      b.classList.add("vibe-yt");
+      searchRow.appendChild(b);
     }
+  }
+
+  // Score any text (Kenku names, track titles): places count double.
+  function scoreText(text, vibe) {
+    const hay = clean(text);
+    let score = 0;
+    for (const v of vibe) {
+      const e = entryFor(v);
+      if ([v, ...(e?.words || [])].some((w) => new RegExp(`\\b${escapeRe(w)}\\b`).test(hay))) score += e?.group === "place" ? 2 : 1;
+    }
+    return score;
   }
 
   // ===========================================================================
