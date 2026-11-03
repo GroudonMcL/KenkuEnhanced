@@ -82,6 +82,7 @@ const YouTubePanel = (() => {
 
     q(".yt-url").value = deck.saved.url;
     q(".yt-volume").value = deck.saved.volume;
+    Icons.paintRange(q(".yt-volume"));
     q(".yt-volume-value").textContent = deck.saved.volume + "%";
     q(".yt-loop").classList.toggle("on", deck.saved.loop);
 
@@ -91,8 +92,8 @@ const YouTubePanel = (() => {
       if (on) q(".yt-url").focus();
     }
     showLinkBox(!deck.saved.url);
-    tile.addAction("🔗", "Change the video (paste a link)", () => showLinkBox(q(".yt-form").hidden));
-    tile.addAction("🔎", "Search YouTube for this player", () => openDialog(deck));
+    tile.addAction("link", "Change the video (paste a link)", () => showLinkBox(q(".yt-form").hidden));
+    tile.addAction("search", "Search YouTube for this player", () => openDialog(deck));
 
     function message(text, kind = "warn", link) {
       const box = q(".yt-message");
@@ -154,7 +155,7 @@ const YouTubePanel = (() => {
 
     function onStateChange(e) {
       const playing = e.data === YT.PlayerState.PLAYING;
-      q(".yt-playpause").textContent = playing ? "⏸" : "▶";
+      Icons.set(q(".yt-playpause"), playing ? "pause" : "play");
       tile.setStatus(playing ? "● playing" : "", "playing");
       // The tile takes the video's name once it's loaded
       if (playing || e.data === YT.PlayerState.CUED) {
@@ -214,6 +215,7 @@ const YouTubePanel = (() => {
       v = Math.max(0, Math.min(100, Math.round(v)));
       if (deck.ready) deck.player.setVolume(v);
       q(".yt-volume").value = v;
+      Icons.paintRange(q(".yt-volume"));
       q(".yt-volume-value").textContent = v + "%";
       if (persist) {
         deck.saved.volume = v;

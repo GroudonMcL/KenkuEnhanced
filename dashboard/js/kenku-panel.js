@@ -121,12 +121,12 @@ const KenkuPanel = (() => {
           <div class="np-playlist"></div>
         </div>
         <div class="np-ctl">
-          <button type="button" class="np-prev" title="Previous track">⏮</button>
-          <button type="button" class="np-play primary" title="Play / pause">▶</button>
-          <button type="button" class="np-stop" title="Stop (pause and rewind)">⏹</button>
-          <button type="button" class="np-next" title="Next track">⏭</button>
-          <button type="button" class="np-shuffle" title="Shuffle">🔀</button>
-          <button type="button" class="np-repeat" title="Repeat: off">🔁</button>
+          <button type="button" class="np-prev" title="Previous track">${Icons.svg("prev")}</button>
+          <button type="button" class="np-play primary" title="Play / pause">${Icons.svg("play")}</button>
+          <button type="button" class="np-stop" title="Stop (pause and rewind)">${Icons.svg("stop")}</button>
+          <button type="button" class="np-next" title="Next track">${Icons.svg("next")}</button>
+          <button type="button" class="np-shuffle" title="Shuffle">${Icons.svg("shuffle")}</button>
+          <button type="button" class="np-repeat" title="Repeat: off">${Icons.svg("repeat")}</button>
         </div>
         <div class="np-seek">
           <span class="np-pos">0:00</span>
@@ -134,7 +134,7 @@ const KenkuPanel = (() => {
           <span class="np-dur">0:00</span>
         </div>
         <div class="np-vol">
-          <button type="button" class="np-mute" title="Mute">🔊</button>
+          <button type="button" class="np-mute" title="Mute">${Icons.svg("volume")}</button>
           <input type="range" min="0" max="100" step="1" value="80" aria-label="Playlist volume">
           <span class="volume-value">80%</span>
         </div>
@@ -152,17 +152,18 @@ const KenkuPanel = (() => {
       q(".progress-fill").style.width = dur ? `${Math.min(100, (pos / dur) * 100)}%` : "0";
       q(".np-pos").textContent = fmt(pos);
       q(".np-dur").textContent = fmt(dur);
-      q(".np-play").textContent = p?.playing ? "⏸" : "▶";
-      q(".np-mute").textContent = p?.muted ? "🔇" : "🔊";
+      Icons.set(q(".np-play"), p?.playing ? "pause" : "play");
+      Icons.set(q(".np-mute"), p?.muted ? "mute" : "volume");
       q(".np-mute").classList.toggle("on", !!p?.muted);
       q(".np-shuffle").classList.toggle("on", !!p?.shuffle);
       const repeat = p?.repeat || "off";
-      q(".np-repeat").textContent = repeat === "track" ? "🔂" : "🔁";
+      Icons.set(q(".np-repeat"), repeat === "track" ? "repeat1" : "repeat");
       q(".np-repeat").title = `Repeat: ${repeat} (click to change)`;
       q(".np-repeat").classList.toggle("on", repeat !== "off");
       if (p && !draggingVolume) {
         const v = Math.round(p.volume * 100);
         slider.value = v;
+        Icons.paintRange(slider);
         q(".np-vol .volume-value").textContent = v + "%";
       }
       tile.setStatus(p?.playing ? "● playing" : "", "playing");

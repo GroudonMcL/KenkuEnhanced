@@ -225,7 +225,7 @@ const EmbedPanel = (() => {
       e.preventDefault();
       load(q(".web-url").value);
     });
-    tile.addAction("🔗", "Change the address", () => showAddress(q(".web-bar").hidden));
+    tile.addAction("link", "Change the address", () => showAddress(q(".web-bar").hidden));
     tile.addAction("☆", "Save this address as a link", () => Links.saveUrl(shownUrl));
     tile.addAction("↗", "Open in a new Kenku tab", () => openNewTab(shownUrl));
 
@@ -240,7 +240,7 @@ const EmbedPanel = (() => {
     function applyZoom() {
       frame.style.setProperty("--zoom", zoom);
       frame.classList.toggle("zoomed", zoom !== 1);
-      zoomBtn.textContent = zoom === 1 ? "🔍" : `🔍${Math.round(zoom * 100)}%`;
+      Icons.set(zoomBtn, "zoom", zoom === 1 ? "" : `${Math.round(zoom * 100)}%`);
       zoomBtn.title = `Zoom: ${Math.round(zoom * 100)}% – click to show the page smaller (more of it fits)`;
     }
     applyZoom();
