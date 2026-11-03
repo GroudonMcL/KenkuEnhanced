@@ -71,6 +71,8 @@ const YouTubePanel = (() => {
         volume: saved.volume ?? 60,
         loop: !!saved.loop,
       },
+      level: saved.volume ?? 60, // the volume right now (fades move this; saved.volume is what's kept)
+      fadeDir: null,             // "out" / "in" while the fade button is fading it
       player: null,
       ready: false,
       readyWaiters: [], // whenReady() promises
@@ -156,6 +158,7 @@ const YouTubePanel = (() => {
     function onStateChange(e) {
       const playing = e.data === YT.PlayerState.PLAYING;
       Icons.set(q(".yt-playpause"), playing ? "pause" : "play");
+      showFade();
       tile.setStatus(playing ? "● playing" : "", "playing");
       // The tile takes the video's name once it's loaded
       if (playing || e.data === YT.PlayerState.CUED) {
@@ -178,7 +181,7 @@ const YouTubePanel = (() => {
         events: {
           onReady: () => {
             deck.ready = true;
-            deck.player.setVolume(deck.saved.volume);
+            deck.applyOutput();
             deck.player.setLoop(deck.saved.loop);
             if (deck.pending) {
               deck.load(deck.pending.target, deck.pending.play);
@@ -206,14 +209,19 @@ const YouTubePanel = (() => {
 
     // Loop: single videos restart in onStateChange; playlists use setLoop.
     q(".yt-loop").addEventListener("click", () => deck.setLoop(!deck.saved.loop));
-    q(".yt-volume").addEventListener("input", (e) => deck.setVolume(Number(e.target.value)));
+    q(".yt-volume").addEventListener("input", (e) => {
+      Mixer.claim(deck); // dragging the slider stops a fade
+      deck.setVolume(Number(e.target.value));
+    });
+    q(".yt-fade").addEventListener("click", () => deck.fadeToggle());
 
     // --- Small helpers other parts of the dashboard (Scenes) use ---
     // Set the volume (0-100). persist=false is used during fades so we don't
     // save 20 times a second; the final value is saved.
     deck.setVolume = (v, persist = true) => {
       v = Math.max(0, Math.min(100, Math.round(v)));
-      if (deck.ready) deck.player.setVolume(v);
+      deck.level = v;
+      deck.applyOutput();
       q(".yt-volume").value = v;
       Icons.paintRange(q(".yt-volume"));
       q(".yt-volume-value").textContent = v + "%";
@@ -222,7 +230,9 @@ const YouTubePanel = (() => {
         save();
       }
     };
-    deck.currentVolume = () => (deck.ready ? deck.player.getVolume() : deck.saved.volume);
+    // What the player really plays at: your volume × Duck (mixer.js).
+    deck.applyOutput = () => deck.ready && deck.player.setVolume(Math.round(deck.level * Mixer.factor()));
+    deck.currentVolume = () => deck.level;
     deck.isPlaying = () => deck.ready && deck.player.getPlayerState() === YT.PlayerState.PLAYING;
     deck.pause = () => deck.ready && deck.player.pauseVideo();
     deck.play = () => deck.ready && deck.player.playVideo();
@@ -250,6 +260,37 @@ const YouTubePanel = (() => {
       else p.loadVideoById({ videoId: deck.target.videoId, startSeconds });
     };
     deck.displayName = () => tile.title();
+
+    // The fade button: fade out (then pause), or fade in (start playing first).
+    // Pressing it again while it's fading turns the fade around.
+    function showFade() {
+      const out = deck.isPlaying() && deck.fadeDir !== "out";
+      Icons.set(q(".yt-fade"), out ? "fadeout" : "fadein");
+      q(".yt-fade").title = out ? "Fade out (then pause)" : "Fade in";
+      q(".yt-fade").classList.toggle("on", !!deck.fadeDir);
+    }
+    deck.fadeToggle = async () => {
+      if (!deck.ready || !deck.target) return;
+      const ms = Mixer.fadeMs();
+      if (deck.isPlaying() && deck.fadeDir !== "out") {
+        deck.fadeDir = "out";
+        showFade();
+        if (await Mixer.fade(deck, 0, ms)) {
+          deck.pause();
+          deck.setVolume(deck.saved.volume, false); // back to its volume, ready for next time
+          deck.fadeDir = null;
+        }
+      } else {
+        deck.fadeDir = "in";
+        showFade();
+        if (!deck.isPlaying()) {
+          deck.setVolume(0, false);
+          deck.play();
+        }
+        if (await Mixer.fade(deck, deck.saved.volume, ms)) deck.fadeDir = null;
+      }
+      showFade();
+    };
     // Resolves once the YouTube player exists (scenes wait for this before fading in).
     deck.whenReady = () => (deck.ready ? Promise.resolve() : new Promise((r) => deck.readyWaiters.push(r)));
 
@@ -267,6 +308,7 @@ const YouTubePanel = (() => {
       // volume (scenes.js fades to it – the current volume isn't touched here).
       apply: (c) => {
         deck.saved.volume = c.volume ?? deck.saved.volume;
+        deck.fadeDir = null;
         deck.setLoop(!!c.loop);
       },
       destroy: () => {

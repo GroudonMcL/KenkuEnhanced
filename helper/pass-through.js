@@ -27,8 +27,12 @@
 //
 // Please be fair to these sites: this is for your own table only. Consider
 // supporting them (Tabletop Audio and myNoise are fan-funded).
+//
+// Pages also get a small volume script (pass-volume.js), so the dashboard can
+// fade them, duck them and set their volume in the mixer.
 
 const express = require("express");
+const passVolume = require("./pass-volume");
 
 // offset: port = dashboard port + offset (Tabletop Audio keeps +1 from before).
 // media:  other hosts of the site, reached through /_m<n>/ on the same port.
@@ -100,7 +104,7 @@ function makeRewriter(site) {
 }
 
 // Fetch `target` and send it to the browser.
-async function pass(req, res, target, { headers: extra, rewrite, mobile, siteName }) {
+async function pass(req, res, target, { headers: extra, rewrite, mobile, siteName, addVolume }) {
   const headers = { "User-Agent": mobile ? MOBILE_UA : DESKTOP_UA, Accept: req.get("accept") || "*/*", ...extra };
   if (req.get("range")) headers.Range = req.get("range");
   if (req.get("accept-language")) headers["Accept-Language"] = req.get("accept-language");
@@ -125,7 +129,12 @@ async function pass(req, res, target, { headers: extra, rewrite, mobile, siteNam
   if (req.method === "HEAD" || !up.body) return res.end();
 
   const type = up.headers.get("content-type");
-  if (isText(type)) return res.send(rewrite(await up.text(), { html: /html/i.test(type) }));
+  if (isText(type)) {
+    const html = /html/i.test(type);
+    const text = rewrite(await up.text(), { html });
+    // Pages get a small volume control, so the dashboard can fade them (pass-volume.js).
+    return res.send(html && addVolume ? passVolume.inject(text) : text);
+  }
 
   // Audio and images: stream straight through (supports seeking via Range).
   const len = up.headers.get("content-length");
@@ -179,7 +188,7 @@ function createApp(site, opts) {
   app.use((req, res) => {
     const target = targetFor(site.origin, req.url);
     if (!target) return res.sendStatus(400);
-    pass(req, res, target, { headers: { Referer: site.origin + "/" }, rewrite, mobile: opts.isMobile(site.id), siteName: site.name });
+    pass(req, res, target, { headers: { Referer: site.origin + "/" }, rewrite, mobile: opts.isMobile(site.id), siteName: site.name, addVolume: true });
   });
 
   return app;

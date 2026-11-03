@@ -6,7 +6,9 @@ A dashboard for [Kenku FM](https://github.com/owlbear-rodeo/kenku-fm) that you o
 - **Scenes**: each scene is a saved board of tiles. One click (or a number key) switches to it:
   what's in both scenes keeps playing, the rest fades out, and its **▶ auto** items fade in.
 - **Tiles on a grid**: everything is a tile you can drag, resize, collapse and close.
-  Add tiles with **＋ Kenku**, **＋ YouTube** and **＋ Website** in the top bar.
+  Add tiles with **Kenku**, **YouTube**, **Website** and **Mixer** in the top bar.
+- **Mixer and Duck**: a volume slider and fade button for every sound source, and **Duck** to
+  turn everything down while you talk.
 - **Kenku tiles**: *Now playing* (play/pause/stop/next, shuffle, repeat, volume), one tile per
   **playlist** (click a track to play it) and one per **soundboard** (sounds as pads).
 - **YouTube tiles**: as many as you like, each with its own volume and loop, so you can layer
@@ -32,8 +34,11 @@ Everything you change is saved by itself (into the scene that's showing).
   name): a video for YouTube, a globe for websites, a note for playlists, pads for soundboards.
 - Tiles name themselves after what they show (the video, playlist, soundboard or page).
   **Double-click a name** to give it your own; clear it to go back to the automatic name.
-- The **lock** button (padlock, top right) locks the layout so nothing moves by accident during a
-  session. The **reset** button (circular arrow) puts the default tiles back in the current scene.
+- **🔒 Lock** (top right, or key `L`) locks the layout: tiles can't be dragged or resized, and the
+  resize handles disappear from the tile edges, so a website's scroll bars are easy to grab.
+  Click **Locked** (or press `L`) to unlock. While unlocked, the edge handles are thin and sit
+  mostly in the gap between tiles.
+- The **reset** button (circular arrow) puts the default tiles back in the current scene.
 - On a narrow screen (a tablet or phone) the tiles stack in one column.
 
 ```
@@ -136,7 +141,10 @@ current scene (the same tiles) or as an empty board. Then arrange its tiles.
 - anything that's **in both scenes keeps playing** without a gap: the same YouTube video, the
   same website or SoundPad (it isn't even reloaded), the Kenku playlist that's playing if the new
   scene has a tile for it, and Kenku sounds whose soundboard is in the new scene;
-- **everything else fades out** (websites can't be faded, so they play until the fade is over);
+- **everything else fades out**. Websites shown through the pass-through (see
+  [Links and Tabletop Audio](#links-and-tabletop-audio)) fade too; other websites can't be
+  turned down, so they play until the fade is over. A website that's in both scenes fades to
+  the volume it has in the new scene;
 - the new scene's **▶ auto** items **fade in**. The music fades to the volume you last set in
   that scene's *Now playing* tile;
 - YouTube tiles that were **playing when you last left the new scene** fade back in, from
@@ -154,6 +162,8 @@ that's already showing starts its ▶ auto items again.
 |---|---|
 | `1` – `9` | Switch to scene 1 – 9 |
 | `0` | Fade everything out (same as **🔇 Fade out all**) – the tiles stay |
+| `D` | Duck: everything down while you talk / back up (see [Mixer](#mixer-fades-and-duck)) |
+| `L` | Lock / unlock the layout |
 | `Ctrl+Z` | Undo the last change to this scene's tiles |
 
 Keys only work while the dashboard has focus. After clicking inside a YouTube video or a
@@ -171,6 +181,26 @@ Good to know:
   The previous version is always kept as `boards.backup.json`.
 - Scenes made before the tile redesign are kept untouched in `data/scenes.json`, but the
   dashboard doesn't use them any more. Your tiles from before became "Scene 1".
+
+## Mixer, fades and Duck
+
+**Fade buttons.** YouTube tiles have a fade button next to ▶: it fades the video out and pauses
+it, or starts it and fades it in. Website tiles shown through the pass-through have one in their
+title bar: it fades the page to silence (the tile says **🔇 silent**) and back. Press it again
+while it's fading to turn the fade around. Fades take as long as the scene's fade time.
+
+**🔇 Fade out all** (or key `0`) fades pass-through websites to silence too. Their fade button
+or the Mixer brings them back.
+
+**The Mixer tile** (**Add → Mixer**) has one row for each sound source on the board: Kenku's
+music, every YouTube tile and every website tile, each with a fade button and a volume slider.
+A website that isn't shown through the pass-through says *volume can't be set*: the dashboard
+can't reach the sound of a page that comes straight from the internet.
+
+**Duck** (in the Mixer, or key `D`) turns everything down to 10, 25, 40 or 60 % while you talk,
+and back up when you press it again. The sliders keep showing your own levels while ducked, and
+anything you change while ducked comes back at the level you set. Kenku soundboard sounds can't
+be ducked: Kenku's remote control can only start and stop them.
 
 ## ✨ Vibe: from a picture to sounds
 Click **Vibe** in the top bar. Then either:
@@ -419,6 +449,7 @@ helper/       Node.js helper server (Express)
   boards.js     saves scenes (= saved boards) to data/boards.json
   scenes.js     the old scenes file from before the tile redesign (data/scenes.json)
   pass-through.js  experimental pass-through (Tabletop Audio, myNoise, Rainy Mood, Ambient-Mixer)
+  pass-volume.js   the small volume script the pass-through adds to pages (fades, Mixer, Duck)
   sounds.js     Freesound search + download, ATTRIBUTION.csv
   links.js      saved links (data/links.json) + Tabletop Audio SoundPad and track lists
   datafile.js   safe reading/writing of the files in data/

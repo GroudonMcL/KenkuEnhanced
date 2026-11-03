@@ -11,7 +11,8 @@
 //   • anything that's in BOTH scenes keeps playing without a gap (the same YouTube
 //     video, the same SoundPad page, a Kenku sound whose soundboard is in both,
 //     the playlist that's playing if the new scene has a tile for it);
-//   • everything else fades out;
+//   • everything else fades out (websites too, when they come through the
+//     pass-through – other websites can't be faded and play until the fade is over);
 //   • the new scene's ▶ auto items fade in (YouTube tiles, one playlist, soundboard sounds);
 //   • YouTube tiles that were playing when you last left the new scene fade back in,
 //     from where they were.
@@ -232,8 +233,21 @@ const Scenes = (() => {
     return true;
   }
 
-  // Kenku playlist volume, 0-1
-  const kenkuVolume = (v) => K.api("/v1/playlist/playback/volume", "PUT", { volume: Math.round(v * 100) / 100 }).catch(() => {});
+  // Kenku playlist volume, 0-1 (yours – Kenku gets it × Duck, see mixer.js)
+  const kenkuVolume = (v) => K.setMusicVolume(v);
+  // Kenku tells us its own volume; while ducked that's lower than yours.
+  const yours = (pb) => {
+    if (pb) pb.volume = Math.min(1, pb.volume / Mixer.factor());
+    return pb;
+  };
+
+  // Fade a YouTube or Website tile from → to. Taking charge stops a fade button's
+  // fade on the same tile (and a newer fade stops this one).
+  // Resolves true if it got there.
+  function fadeSource(src, from, to, ms, token) {
+    const alive = Mixer.claim(src);
+    return ramp(from, to, ms, (v) => alive() && src.setVolume(v, false), token).then((done) => done && alive());
+  }
 
   // Leaving a scene: note which YouTube tiles were playing (and how far in), so
   // coming back to it starts them again from there.
@@ -265,7 +279,7 @@ const Scenes = (() => {
 
     // What's playing right now? (ask Kenku fresh, not the 1-second-old copy)
     const [pb, playingSounds] = await Promise.all([
-      K.api("/v1/playlist/playback").catch(() => null),
+      K.api("/v1/playlist/playback").then(yours).catch(() => null),
       K.api("/v1/soundboard/playback").then((r) => r.sounds.map((s) => s.id)).catch(() => []),
     ]);
     if (token !== runToken) return;
@@ -294,7 +308,7 @@ const Scenes = (() => {
       deck.setVolume(0, false);
       if (resumeAt) deck.resume(resumeAt);
       else deck.play();
-      if (await ramp(0, vol, fadeMs, (v) => deck.setVolume(v, false), token)) deck.setVolume(vol, true);
+      if (await fadeSource(deck, 0, vol, fadeMs, token)) deck.setVolume(vol, true);
     };
     for (const { tile, item } of kept) {
       if (tile.type !== "youtube") continue;
@@ -303,13 +317,22 @@ const Scenes = (() => {
       if (deck.isPlaying()) {
         keepNames.push(tile.title());
         const from = deck.currentVolume();
-        if (from !== vol) work.push(ramp(from, vol, fadeMs, (v) => deck.setVolume(v, false), token).then((done) => done && deck.setVolume(vol, true)));
+        if (from !== vol) work.push(fadeSource(deck, from, vol, fadeMs, token).then((done) => done && deck.setVolume(vol, true)));
       } else if ((item.auto || item.resume) && deck.saved.url) {
         work.push(startDeck(deck, vol, tile.title(), item.resume && !item.auto ? null : undefined));
       }
     }
-    // A website that's in both scenes was never reloaded, so whatever it plays carries on.
-    for (const { tile } of kept) if (switching && tile.type === "website" && tile.config().url) keepNames.push(tile.title());
+    // A website that's in both scenes was never reloaded, so whatever it plays carries on
+    // (fading to this scene's volume, if it can be faded).
+    for (const { tile, item } of kept) {
+      if (!switching || tile.type !== "website" || !tile.config().url) continue;
+      keepNames.push(tile.title());
+      const w = tile.inst;
+      const vol = item.config?.volume ?? 100;
+      if (w.canFade() && w.currentVolume() !== vol) {
+        work.push(fadeSource(w, w.currentVolume(), vol, fadeMs, token).then((done) => done && w.setVolume(vol, false)));
+      }
+    }
     for (const { tile, item } of added) {
       if (tile.type === "youtube" && (item.auto || item.resume) && item.config?.url) {
         work.push(startDeck(tile.inst.deck, item.config.volume ?? 60, tile.title(), item.resume || undefined));
@@ -319,9 +342,12 @@ const Scenes = (() => {
       if (t.type === "youtube" && t.inst.deck?.isPlaying()) {
         outNames.push(t.title());
         const deck = t.inst.deck;
-        work.push(ramp(deck.currentVolume(), 0, fadeMs, (v) => deck.setVolume(v, false), token).finally(() => t.dispose()));
+        work.push(fadeSource(deck, deck.currentVolume(), 0, fadeMs, token).finally(() => t.dispose()));
+      } else if (t.type === "website" && t.config().url && t.inst.canFade()) {
+        outNames.push(t.title());
+        work.push(fadeSource(t.inst, t.inst.currentVolume(), 0, fadeMs, token).finally(() => t.dispose()));
       } else if (t.type === "website" && t.config().url) {
-        // We can't turn a website's volume down, so it plays on until the fade is over.
+        // Not through the pass-through: we can't turn it down, so it plays on until the fade is over.
         outNames.push(t.title());
         setTimeout(() => t.dispose(), fadeMs);
       } else {
@@ -395,14 +421,18 @@ const Scenes = (() => {
     busy = false;
     render();
     const fadeMs = fadeSeconds * 1000;
-    const pb = await K.api("/v1/playlist/playback").catch(() => null);
+    const pb = await K.api("/v1/playlist/playback").then(yours).catch(() => null);
     const decks = YouTubePanel.decks().filter((d) => d.isPlaying());
+    // Websites that can be faded fade to silence and stay there (a website can't be
+    // paused); their fade button or the Mixer brings them back.
+    const pages = EmbedPanel.instances().filter((w) => w.canFade() && w.currentVolume() > 0);
 
     // Stop sounds (Kenku fades them using their own settings)
     const sounds = await K.api("/v1/soundboard/playback").then((r) => r.sounds).catch(() => []);
     sounds.forEach((s) => K.api("/v1/soundboard/stop", "PUT", { id: s.id }).catch(() => {}));
 
-    const outs = decks.map((d) => ramp(d.currentVolume(), 0, fadeMs, (v) => d.setVolume(v, false), token));
+    const outs = decks.map((d) => fadeSource(d, d.currentVolume(), 0, fadeMs, token));
+    pages.forEach((w) => outs.push(fadeSource(w, w.currentVolume(), 0, fadeMs, token)));
     if (pb?.playing) outs.push(ramp(pb.volume, 0, fadeMs, kenkuVolume, token));
     await Promise.all(outs);
     if (token !== runToken) return;
