@@ -442,7 +442,7 @@ const YTPlaylist = (() => {
         deck.errors = 0;
         // The video's name, if the list didn't have it
         const it = current();
-        const title = active().getVideoData?.().title;
+        const title = active().getVideoData?.()?.title;
         if (it && !it.title && title) {
           it.title = title;
           paintRow(deck.order[deck.pos]);
@@ -450,6 +450,9 @@ const YTPlaylist = (() => {
         }
       }
       if (e.data === s.PAUSED) deck.wantPlay = false;
+      // A cue that was still loading can land after our "play" and stop it at the
+      // thumbnail: if it should be playing, start it now.
+      if (e.data === s.CUED && deck.wantPlay) active().playVideo();
       if (e.data === s.ENDED && !deck.xf) advance(true);
       showPlaying();
     }
@@ -543,7 +546,7 @@ const YTPlaylist = (() => {
       deck.wantPlay = true;
       if (!current()) return; // the list is still loading: it plays when it's there
       const p = active();
-      const same = p.getVideoData?.().video_id === current().videoId;
+      const same = p.getVideoData?.()?.video_id === current().videoId;
       if (p.getPlayerState() === S().UNSTARTED || !same) {
         playAt(deck.pos, { play: true, fade: false, startSeconds: same ? Math.floor(p.getCurrentTime?.() || 0) : 0 });
       } else {
