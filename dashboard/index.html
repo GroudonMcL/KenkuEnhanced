@@ -29,12 +29,13 @@
     </div>
     <div class="add-buttons" role="group" aria-label="Add a tile">
       <span class="add-label">Add</span>
-      <button id="add-kenku" type="button" class="add-btn"><span class="dot dot-k"></span>Kenku</button>
-      <button id="add-youtube" type="button" class="add-btn"><span class="dot dot-y"></span>YouTube</button>
-      <button id="add-website" type="button" class="add-btn"><span class="dot dot-w"></span>Website</button>
+      <button id="add-kenku" type="button" class="add-btn" title="Add a Kenku tile: now playing, a playlist or a soundboard"><span class="dot dot-k"></span>Kenku</button>
+      <button id="add-youtube" type="button" class="add-btn" title="Add a YouTube tile"><span class="dot dot-y"></span>YouTube</button>
+      <button id="add-website" type="button" class="add-btn" title="Add a website tile"><span class="dot dot-w"></span>Website</button>
+      <button id="add-mixer" type="button" class="add-btn" title="Add the Mixer: volume for everything, fades, and Duck"><span class="dot dot-m"></span>Mixer</button>
     </div>
     <div class="tools">
-      <button id="board-lock" type="button" class="icon-btn" title="Lock the layout"></button>
+      <button id="board-lock" type="button" class="small lock-btn" title="Lock the layout"></button>
       <button id="board-reset" type="button" class="icon-btn" title="Put the default tiles back in this scene" aria-label="Reset tiles"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></button>
       <button id="open-settings" type="button" class="icon-btn" title="Settings" aria-label="Settings"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></svg></button>
     </div>
@@ -60,6 +61,7 @@
       <div class="yt-frame"><div class="yt-player"></div></div>
       <div class="tile-controls">
         <button type="button" class="small yt-playpause" title="Play / pause"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" stroke="none" d="M7 4.5v15a1 1 0 0 0 1.5.86l12.5-7.5a1 1 0 0 0 0-1.72L8.5 3.64A1 1 0 0 0 7 4.5z"/></svg></button>
+        <button type="button" class="small yt-fade" title="Fade in"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 19h18V5z"/></svg></button>
         <button type="button" class="small yt-loop" title="Loop"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m17 2 3 3-3 3"/><path d="M4 11V9a4 4 0 0 1 4-4h12"/><path d="m7 22-3-3 3-3"/><path d="M20 13v2a4 4 0 0 1-4 4H4"/></svg></button>
         <span class="vol-icon"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg></span>
         <input class="yt-volume" type="range" min="0" max="100" step="1" aria-label="Volume">
@@ -408,6 +410,7 @@
   <script src="js/kenku-panel.js"></script>
   <script src="js/youtube-panel.js"></script>
   <script src="js/embed-panel.js"></script>
+  <script src="js/mixer.js"></script>
   <script src="js/sounds-panel.js"></script>
   <script src="js/links.js"></script>
   <script src="js/settings.js"></script>

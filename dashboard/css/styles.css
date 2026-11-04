@@ -83,6 +83,8 @@ button.mid { min-height: 32px; padding: 4px 14px; }
 button.small { padding: 3px 9px; font-size: .92rem; }
 button.small, .add-btn { display: inline-flex; align-items: center; gap: 6px; }
 .icon-btn { padding: 0; width: 28px; height: 28px; display: inline-grid; place-items: center; font-size: .95rem; line-height: 1; }
+.lock-btn { height: 28px; }
+.lock-btn.on { background: var(--accent-soft); color: var(--accent-fg); border-color: var(--accent-line); }
 .icon-btn.on { background: var(--accent-soft); color: var(--accent-fg); border-color: var(--accent-line); font-weight: 400; }
 
 select, input[type=search], input[type=text], input[type=url] {
@@ -126,11 +128,12 @@ input:focus-visible, select:focus-visible, textarea:focus-visible {
   background: var(--input); border: 1px solid var(--border); border-radius: 9px;
 }
 .add-label { color: var(--faint); font-size: .82rem; padding: 0 5px 0 6px; }
-.add-btn { font-size: .92rem; padding: 2px 9px; background: transparent; border-color: transparent; border-radius: 6px; }
+.add-btn { font-size: .92rem; padding: 2px 7px; background: transparent; border-color: transparent; border-radius: 6px; }
 .add-btn:hover { background: var(--panel-3); border-color: transparent; }
 .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
 .add-btn .dot { margin: 0; }
 .add-label::before { content: "+ "; }
+.dot-m { background: #c9b0fa; }
 .dot-k { background: var(--kenku); } .dot-y { background: var(--yt); } .dot-w { background: var(--web); } .dot-s { background: var(--snd); }
 
 .status { padding: 2px 8px; border-radius: 999px; font-size: .82rem; font-weight: 550; white-space: nowrap;
@@ -239,6 +242,7 @@ body:not(.board-locked) #board {
 .b-y { background: rgba(240, 82, 82, .12); color: #ff8f8f; }
 .b-w { background: rgba(56, 189, 248, .12); color: #7dd3fc; }
 .b-s { background: rgba(60, 207, 126, .12); color: #6ee7a8; }
+.b-m { background: rgba(183, 148, 246, .14); color: #c9b0fa; }
 .tile-title {
   font-weight: 600; font-size: .96rem; flex: 1; min-width: 0;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -294,6 +298,11 @@ body:not(.board-locked) #board {
   border-right: 2px solid #46464e; border-bottom: 2px solid #46464e; border-radius: 0 0 3px 0; opacity: .7;
 }
 .grid-stack-item > .ui-resizable-se:hover { border-color: var(--accent); opacity: 1; }
+/* Edge handles: thin, and mostly in the gap between tiles, so they cover as little
+   as possible of a website's scroll bars (Lock layout removes them altogether). */
+.grid-stack-item > .ui-resizable-e { width: 6px; right: 0 !important; }
+.grid-stack-item > .ui-resizable-w { width: 6px; left: 0 !important; }
+.grid-stack-item > .ui-resizable-s { height: 6px; bottom: 0 !important; }
 .collapsed > .ui-resizable-handle { display: none !important; }
 
 /* A tile leaving the board during a scene switch: invisible but still alive,
@@ -610,6 +619,9 @@ div.pick-row { background: var(--panel-2); border: 1px solid var(--border); bord
 .upd-link { color: var(--accent-fg); align-self: center; }
 .dialog .progress { height: 8px; flex: none; }
 
+/* Not much room: the add buttons say what they add in their tooltips */
+@media (max-width: 1500px) { .add-label { display: none; } }
+
 /* ---------- Narrow screens (tablet/phone): one column, gridstack handles the tiles ---------- */
 @media (max-width: 1100px) {
   .topbar h1 { display: none; }
@@ -624,3 +636,26 @@ div.pick-row { background: var(--panel-2); border: 1px solid var(--border); bord
   border: 1px solid var(--border); border-radius: var(--radius-sm); cursor: pointer; }
 .dialog input[type=color]::-webkit-color-swatch-wrapper { padding: 0; }
 .dialog input[type=color]::-webkit-color-swatch { border: 0; border-radius: 4px; }
+
+/* ---------- Fade buttons ---------- */
+.yt-fade.on, .tile-btn.on { background: var(--accent-soft); color: var(--accent-fg); border-color: var(--accent-line); }
+
+/* ---------- Mixer tile (mixer.js) ---------- */
+.mixer { display: flex; flex-direction: column; gap: 6px; }
+.mx-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.mx-duck { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; height: 30px; padding: 0 12px; }
+.mx-duck.on { background: var(--accent-soft); color: var(--accent-fg); border-color: var(--accent-line); }
+.mx-level { display: inline-flex; align-items: center; gap: 5px; color: var(--muted); font-size: .88rem; }
+.mx-level select { min-height: 0; height: 26px; padding: 0 4px; }
+.mx-rows { display: flex; flex-direction: column; gap: 3px; }
+.mx-row { display: flex; align-items: center; gap: 6px; min-height: 28px; }
+.mx-row[hidden], .mx-row [hidden] { display: none !important; }
+.mx-icon { color: var(--muted); display: inline-grid; flex: none; }
+.mx-icon .i { width: 13px; height: 13px; }
+.mx-row.on .mx-icon { color: var(--accent-fg); }
+.mx-name { flex: 0 1 38%; min-width: 50px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: .9rem; }
+.mx-row.off .mx-name { color: var(--muted); flex: 1; }
+.mx-row input[type=range] { flex: 1; min-width: 50px; }
+.mx-row .mx-fade { height: 24px; min-width: 28px; padding: 0 6px; justify-content: center; }
+.mx-row .mx-fade .i { width: 13px; height: 13px; }
+.mx-off { font-size: .82rem; white-space: nowrap; }

@@ -37,6 +37,7 @@
   KenkuPanel.init();
   YouTubePanel.init();
   EmbedPanel.init();
+  Mixer.init();      // (before Scenes builds the board: it registers the Mixer tile)
   Links.init();
   Scenes.init();
   SoundsPanel.init();

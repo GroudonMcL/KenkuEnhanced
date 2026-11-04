@@ -2,7 +2,9 @@
 //
 // Every element on screen is a "tile": drag it by its title bar, resize it with
 // the handles on its edges, ▾ collapse it to just the title bar, ✕ close it.
-// 🔒 in the top bar freezes the layout so nothing moves by accident.
+// "Lock layout" in the top bar (or key L) freezes the layout: no dragging, no
+// resizing, and the resize handles are gone, so a website's scroll bars at the
+// tile's edges are easy to reach.
 // Some tiles (YouTube, playlists) have a "▶ auto" switch: ticked = it starts
 // when you switch to this scene (see scenes.js).
 //
@@ -405,10 +407,13 @@ const Board = (() => {
     document.body.classList.toggle("board-locked", on);
     const b = $("board-lock");
     b.innerHTML = `<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/>` +
-      (on ? `<path d="M8 11V7a4 4 0 0 1 8 0v4"/>` : `<path d="M8 11V7a4 4 0 0 1 7.6-1.8"/>`) + `</svg>`;
-    b.setAttribute("aria-label", on ? "Unlock the layout" : "Lock the layout");
+      (on ? `<path d="M8 11V7a4 4 0 0 1 8 0v4"/>` : `<path d="M8 11V7a4 4 0 0 1 7.6-1.8"/>`) + `</svg>` +
+      `<span>${on ? "Locked" : "Lock"}</span>`;
+    b.setAttribute("aria-pressed", on ? "true" : "false");
     b.classList.toggle("on", on);
-    b.title = on ? "Layout locked – click to allow moving and resizing tiles" : "Lock the layout (so tiles can't be moved by accident)";
+    b.title = on
+      ? "Layout locked: tiles can't be moved or resized. Click (or press L) to unlock."
+      : "Lock the layout (key L): no moving or resizing, and no resize handles over websites' scroll bars";
   }
 
   // What a brand-new scene starts with
@@ -465,6 +470,13 @@ const Board = (() => {
 
     setLocked(locked);
     $("board-lock").addEventListener("click", () => setLocked(!locked));
+    // L = lock / unlock (not while typing, or while a dialog is open)
+    document.addEventListener("keydown", (e) => {
+      if (e.ctrlKey || e.altKey || e.metaKey || e.key.toLowerCase() !== "l") return;
+      if (e.target.closest("input, textarea, select, [contenteditable]") || document.querySelector("dialog[open]")) return;
+      e.preventDefault();
+      setLocked(!locked);
+    });
   }
 
   return {

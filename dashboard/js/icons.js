@@ -25,6 +25,12 @@ const Icons = (() => {
     music: `<path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>`,
     pads: `<rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/>`,
     bars: `<path d="M5 20v-8M10 20V5M15 20v-11M20 20v-6"/>`,
+    sliders: `<path d="M6 4v16M12 4v16M18 4v16"/><rect ${F} x="3.5" y="13" width="5" height="3" rx="1"/><rect ${F} x="9.5" y="7" width="5" height="3" rx="1"/><rect ${F} x="15.5" y="15" width="5" height="3" rx="1"/>`,
+    // volume ramps: fade in (getting louder) and fade out (getting quieter)
+    fadein: `<path d="M3 19h18V5z"/>`,
+    fadeout: `<path d="M3 5v14h18z"/>`,
+    // Duck: a speaker with an arrow down
+    duck: `<path d="M10 6 6 9H3v6h3l4 3z"/><path d="M17 5v10M13.5 12 17 15.5 20.5 12"/>`,
   };
   const svg = (name) => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${P[name] || ""}</svg>`;
   function set(el, name, text = "") {

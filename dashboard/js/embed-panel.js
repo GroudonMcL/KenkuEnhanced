@@ -14,6 +14,11 @@
 // EXPERIMENTAL: sites ticked in ⚙ Settings → Experimental (Tabletop Audio, myNoise,
 // Rainy Mood, Ambient-Mixer) are loaded through the helper's pass-through instead
 // (helper/pass-through.js, one port per site).
+//
+// Volume: pages that come through the pass-through carry a small volume script
+// (helper/pass-volume.js). They answer { kenku: "volume-ready" } and then this
+// tile can set their volume – for fades, the Mixer and Duck. Other sites are
+// shown straight from the internet, and the dashboard can't reach their sound.
 
 const EmbedPanel = (() => {
   const $ = (id) => document.getElementById(id);
@@ -117,6 +122,10 @@ const EmbedPanel = (() => {
     let currentUrl = "";
     let shownUrl = config.url || "";
     let pageTitle = "";
+    let savedVolume = config.volume ?? 100; // kept with the scene (0-100)
+    let level = savedVolume;                // right now (fades move this)
+    let controllable = false;               // the page answered our volume script
+    let passStatus = "";
 
     function message(text, kind) {
       const box = q(".web-message");
@@ -149,9 +158,40 @@ const EmbedPanel = (() => {
       box.append(h, p, b);
     }
 
+    // ---- Volume (pass-through pages only) ----
+    const output = () => {
+      if (!controllable) return;
+      try { frame.contentWindow.postMessage({ kenku: "volume", value: (level / 100) * Mixer.factor() }, "*"); } catch { /* gone */ }
+    };
+    function setStatus(text) {
+      if (text !== undefined) passStatus = text;
+      tile.setStatus(controllable && level === 0 ? "🔇 silent" : passStatus, "muted");
+    }
+    function showFade() {
+      fadeBtn.hidden = !controllable;
+      const out = level > 0 && inst.fadeDir !== "out";
+      Icons.set(fadeBtn, out ? "fadeout" : "fadein");
+      fadeBtn.title = out ? "Fade this page out" : "Fade this page in";
+      fadeBtn.classList.toggle("on", !!inst.fadeDir);
+    }
+    function setControllable(on) {
+      if (controllable === on) return;
+      controllable = on;
+      output();
+      showFade();
+      setStatus();
+      window.dispatchEvent(new Event("mixer-changed"));
+    }
+    // A new page in the frame: it has to say hello again.
+    frame.addEventListener("load", () => {
+      setControllable(false);
+      try { frame.contentWindow.postMessage({ kenku: "volume-hello" }, "*"); } catch { /* ignore */ }
+    });
+
     async function load(url) {
       url = normalise(url);
       if (!url) return;
+      setControllable(false);
       lastUsed = inst;
       q(".web-url").value = url;
       shownUrl = url;
@@ -185,7 +225,7 @@ const EmbedPanel = (() => {
         }
         if (url !== currentUrl) return;
         if (!pc.ok) {
-          tile.setStatus("");
+          setStatus("");
           showLauncher(url, `${hostOf(url)} can't be shown here right now.`,
             `${pc.reason || "The pass-through didn't work."} It opens in its own Kenku tab instead; its sound still reaches Discord.`);
           return;
@@ -193,12 +233,12 @@ const EmbedPanel = (() => {
         wrap.hidden = false;
         message(null);
         const site = passSiteFor(url);
-        tile.setStatus(site?.mobile ? "🧪 pass-through · 📱" : "🧪 pass-through", "muted");
+        setStatus(site?.mobile ? "🧪 pass-through · 📱" : "🧪 pass-through");
         frame.setAttribute("sandbox", SANDBOX);
         frame.src = passUrl;
         return;
       }
-      tile.setStatus("");
+      setStatus("");
       frame.removeAttribute("sandbox");
 
       if (check.allowed !== null && check.allowed !== undefined) rememberBlocked(url, check.allowed === false);
@@ -228,6 +268,8 @@ const EmbedPanel = (() => {
     tile.addAction("link", "Change the address", () => showAddress(q(".web-bar").hidden));
     tile.addAction("☆", "Save this address as a link", () => Links.saveUrl(shownUrl));
     tile.addAction("↗", "Open in a new Kenku tab", () => openNewTab(shownUrl));
+    const fadeBtn = tile.addAction("fadeout", "Fade this page out", () => inst.fadeToggle());
+    fadeBtn.hidden = true;
 
     // Zoom: show the page smaller so more of it fits in the tile (works for any site).
     // New tiles start at 55%.
@@ -252,7 +294,39 @@ const EmbedPanel = (() => {
       url: () => shownUrl,
       rename: () => shownUrl && tile.setTitle(nameFor(shownUrl, pageTitle)),
       tile,
-      save: () => ({ url: shownUrl, zoom }),
+      save: () => ({ url: shownUrl, zoom, ...(savedVolume !== 100 ? { volume: savedVolume } : {}) }),
+      // A scene switch kept this page: take the scene's volume (scenes.js fades to it).
+      apply: (c) => {
+        savedVolume = c.volume ?? 100;
+        inst.fadeDir = null;
+      },
+      frameWindow: () => frame.contentWindow,
+      onVolumeReady: () => setControllable(true),
+      canFade: () => controllable,
+      currentVolume: () => level,
+      savedVolume: () => savedVolume,
+      setVolume: (v, persist = true) => {
+        level = Math.max(0, Math.min(100, Math.round(v)));
+        output();
+        if (persist) {
+          savedVolume = level;
+          tile.changed();
+        }
+        setStatus();
+        showFade();
+      },
+      applyOutput: output,
+      fadeDir: null,
+      // Fade out (it stays silent), or back in to its volume. Again while fading = turn around.
+      fadeToggle: async () => {
+        if (!controllable) return;
+        const out = level > 0 && inst.fadeDir !== "out";
+        inst.fadeDir = out ? "out" : "in";
+        showFade();
+        if (await Mixer.fade(inst, out ? 0 : savedVolume || 100)) inst.fadeDir = null;
+        showFade();
+        window.dispatchEvent(new Event("mixer-changed"));
+      },
       destroy: () => {
         frame.src = "about:blank";
         instances.splice(instances.indexOf(inst), 1);
@@ -299,6 +373,11 @@ const EmbedPanel = (() => {
       size: { w: 5, h: 18, minW: 2, minH: 6 }, // 20px rows
       create: createWebsite });
     window.addEventListener("settings-saved", (e) => setPassThrough(e.detail));
+    // A pass-through page saying "you can set my volume" (helper/pass-volume.js)
+    window.addEventListener("message", (e) => {
+      if (e.data?.kenku !== "volume-ready") return;
+      instances.find((i) => i.frameWindow() === e.source)?.onVolumeReady();
+    });
     // SoundPad / track lists or saved links arrived or changed → better tile names
     window.addEventListener("link-names-changed", () => instances.forEach((i) => i.rename()));
     // Find out whether the pass-through is on before tiles load their pages.
@@ -318,6 +397,7 @@ const EmbedPanel = (() => {
     normalise,
     current: () => (lastUsed || instances[0])?.url() || "",
     urls: () => instances.map((i) => i.url()),
+    instances: () => instances,
     passThroughOn: () => passSites.some((s) => s.enabled),
   };
 })();

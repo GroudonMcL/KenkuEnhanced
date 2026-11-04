@@ -43,6 +43,13 @@ const KenkuPanel = (() => {
     if (msg) box.textContent = "⚠ Kenku: " + msg;
   }
 
+  // ---- Music volume -------------------------------------------------------
+  // Your music volume (0-1) vs. Kenku's: while Duck is on (mixer.js), Kenku's
+  // volume is yours × the duck, and the sliders keep showing yours.
+  const toKenku = (v) => Math.round(Math.max(0, Math.min(1, v)) * Mixer.factor() * 100) / 100;
+  const fromKenku = (v) => Math.min(1, v / Mixer.factor());
+  const setMusicVolume = (v) => api("/v1/playlist/playback/volume", "PUT", { volume: toKenku(v) }).catch((e) => showError(e.message));
+
   // ---- State + listeners --------------------------------------------------
   let library = { playlists: [], tracks: [], soundboards: [], sounds: [] };
   let loaded = false;                  // library loaded at least once
@@ -160,8 +167,8 @@ const KenkuPanel = (() => {
       Icons.set(q(".np-repeat"), repeat === "track" ? "repeat1" : "repeat");
       q(".np-repeat").title = `Repeat: ${repeat} (click to change)`;
       q(".np-repeat").classList.toggle("on", repeat !== "off");
-      if (p && !draggingVolume) {
-        const v = Math.round(p.volume * 100);
+      if (p && !draggingVolume && !Mixer.duckBusy()) {
+        const v = Math.round(fromKenku(p.volume) * 100);
         slider.value = v;
         Icons.paintRange(slider);
         q(".np-vol .volume-value").textContent = v + "%";
@@ -197,7 +204,7 @@ const KenkuPanel = (() => {
     function sendVolume() {
       lastSent = Date.now();
       pending = null;
-      api("/v1/playlist/playback/volume", "PUT", { volume: slider.value / 100 }).catch((e) => showError(e.message));
+      setMusicVolume(slider.value / 100);
     }
     slider.addEventListener("input", () => {
       draggingVolume = true;
@@ -549,6 +556,8 @@ const KenkuPanel = (() => {
     api,                                        // raw call to Kenku through the helper
     library: () => library,                     // playlists, tracks, soundboards, sounds
     playback: () => playback,                   // last known playlist playback
+    musicVolume: () => (playback ? fromKenku(playback.volume) : null), // yours, 0-1 (see Duck)
+    setMusicVolume,                             // yours, 0-1
     playingSounds: () => playingSoundIds,       // Set of sound ids playing now
     refresh: () => { pollPlayback(); pollSounds(); },
   };
