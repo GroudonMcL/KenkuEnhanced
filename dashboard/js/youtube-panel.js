@@ -143,6 +143,7 @@ const YouTubePanel = (() => {
 
     // YouTube error codes → plain English
     function onError(e) {
+      deck.wantPlay = false;
       const reasons = {
         2: "That doesn't look like a valid video ID.",
         5: "This video can't play in an embedded player.",
@@ -157,6 +158,7 @@ const YouTubePanel = (() => {
 
     function onStateChange(e) {
       const playing = e.data === YT.PlayerState.PLAYING;
+      if (playing || e.data === YT.PlayerState.PAUSED) deck.wantPlay = false; // it started (or you paused it in the video)
       Icons.set(q(".yt-playpause"), playing ? "pause" : "play");
       showFade();
       tile.setStatus(playing ? "● playing" : "", "playing");
@@ -203,8 +205,7 @@ const YouTubePanel = (() => {
 
     q(".yt-playpause").addEventListener("click", () => {
       if (!deck.ready) return;
-      const playing = deck.player.getPlayerState() === YT.PlayerState.PLAYING;
-      playing ? deck.player.pauseVideo() : deck.player.playVideo();
+      deck.isPlaying() ? deck.pause() : deck.play();
     });
 
     // Loop: single videos restart in onStateChange; playlists use setLoop.
@@ -234,8 +235,30 @@ const YouTubePanel = (() => {
     deck.applyOutput = () => deck.ready && deck.player.setVolume(Math.round(deck.level * Mixer.factor()));
     deck.currentVolume = () => deck.level;
     deck.isPlaying = () => deck.ready && deck.player.getPlayerState() === YT.PlayerState.PLAYING;
-    deck.pause = () => deck.ready && deck.player.pauseVideo();
-    deck.play = () => deck.ready && deck.player.playVideo();
+    deck.pause = () => {
+      deck.wantPlay = false;
+      if (deck.ready) deck.player.pauseVideo();
+    };
+    // Start playing. YouTube ignores playVideo() while a video is still being
+    // cued (right after a scene built this tile), and a player that has nothing
+    // loaded yet can't play at all. So if it isn't cued/paused yet, load the video
+    // with "play" instead, and check a moment later that it really started.
+    deck.play = () => {
+      if (!deck.ready) return;
+      const S = YT.PlayerState;
+      const state = deck.player.getPlayerState();
+      deck.wantPlay = true;
+      if (deck.target && (state === S.UNSTARTED || !deck.player.getVideoData?.().video_id)) {
+        deck.resume(deck.position());
+      } else {
+        deck.player.playVideo();
+      }
+      clearTimeout(deck.playCheck);
+      deck.playCheck = setTimeout(() => {
+        const s = deck.ready && deck.player.getPlayerState();
+        if (deck.wantPlay && deck.target && ![S.PLAYING, S.BUFFERING].includes(s)) deck.resume(deck.position());
+      }, 2500);
+    };
     deck.setLoop = (on) => {
       deck.saved.loop = !!on;
       q(".yt-loop").classList.toggle("on", deck.saved.loop);
@@ -312,6 +335,7 @@ const YouTubePanel = (() => {
         deck.setLoop(!!c.loop);
       },
       destroy: () => {
+        clearTimeout(deck.playCheck);
         deck.player?.destroy?.();
         decks.splice(decks.indexOf(deck), 1);
         renderResults();
