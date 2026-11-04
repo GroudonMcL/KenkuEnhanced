@@ -249,12 +249,15 @@ const Scenes = (() => {
     return ramp(from, to, ms, (v) => alive() && src.setVolume(v, false), token).then((done) => done && alive());
   }
 
+  // YouTube video tiles and YouTube playlist tiles (yt-playlist.js) work the same way here.
+  const isYT = (type) => type === "youtube" || type === "ytplaylist";
+
   // Leaving a scene: note which YouTube tiles were playing (and how far in), so
   // coming back to it starts them again from there.
   function rememberPlaying(scene) {
     const playing = new Map(YouTubePanel.decks().filter((d) => d.isPlaying()).map((d) => [d.tile.id, d]));
     for (const item of scene?.layout?.items || []) {
-      const deck = item.type === "youtube" && playing.get(item.id);
+      const deck = isYT(item.type) && playing.get(item.id);
       if (deck) item.resume = deck.position() || { time: 0 };
       else delete item.resume;
     }
@@ -311,7 +314,7 @@ const Scenes = (() => {
       if (await fadeSource(deck, 0, vol, fadeMs, token)) deck.setVolume(vol, true);
     };
     for (const { tile, item } of kept) {
-      if (tile.type !== "youtube") continue;
+      if (!isYT(tile.type)) continue;
       const deck = tile.inst.deck;
       const vol = item.config?.volume ?? deck.saved.volume;
       if (deck.isPlaying()) {
@@ -334,12 +337,12 @@ const Scenes = (() => {
       }
     }
     for (const { tile, item } of added) {
-      if (tile.type === "youtube" && (item.auto || item.resume) && item.config?.url) {
+      if (isYT(tile.type) && (item.auto || item.resume) && item.config?.url) {
         work.push(startDeck(tile.inst.deck, item.config.volume ?? 60, tile.title(), item.resume || undefined));
       }
     }
     for (const t of leaving) {
-      if (t.type === "youtube" && t.inst.deck?.isPlaying()) {
+      if (isYT(t.type) && t.inst.deck?.isPlaying()) {
         outNames.push(t.title());
         const deck = t.inst.deck;
         work.push(fadeSource(deck, deck.currentVolume(), 0, fadeMs, token).finally(() => t.dispose()));

@@ -10,6 +10,7 @@
 //   /api/update/* → one-click update from GitHub Releases (helper/update.js)
 //   /api/frame-check?url=... → does a website allow itself to be shown in an iframe?
 //   /api/youtube/search?q=...&type=video → YouTube search (needs apiKeys.youtube)
+//   /api/youtube/playlist, /api/youtube/titles → videos in a playlist (helper/youtube-playlist.js)
 //   /api/settings → read / save settings (the dashboard's Settings pane)
 //   /api/boards   → your scenes = saved tile layouts (data/boards.json, helper/boards.js)
 //   /api/scenes   → the old scenes from before the tile redesign (data/scenes.json, backup only)
@@ -247,6 +248,10 @@ app.get("/api/youtube/search", async (req, res) => {
   }
 });
 
+// The videos in a playlist, for the Playlist tile (helper/youtube-playlist.js)
+const ytPlaylistRouter = require("./youtube-playlist")();
+app.use("/api/youtube", ytPlaylistRouter);
+
 // ---------------------------------------------------------------------------
 // 6. Settings (used by the dashboard's ⚙ Settings pane)
 // ---------------------------------------------------------------------------
@@ -354,7 +359,10 @@ app.put("/api/settings", jsonOnly, (req, res) => {
     return res.status(500).json({ error: `Couldn't save config.json: ${err.message}` });
   }
   startPassThrough();
-  if (changes.apiKeys?.youtube !== undefined) searchCache.clear();
+  if (changes.apiKeys?.youtube !== undefined) {
+    searchCache.clear();
+    ytPlaylistRouter.clearCache();
+  }
   if (changes.apiKeys?.freesound !== undefined) soundsRouter.clearCache();
   res.json(settingsForBrowser());
 });

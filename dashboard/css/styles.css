@@ -271,8 +271,8 @@ body:not(.board-locked) #board {
 }
 .collapsed .tile-body { flex: 0 0 0; padding: 0; overflow: hidden; } /* clipped, still playing */
 /* A collapsed YouTube tile keeps its ▶ / loop / volume row; the video is clipped away (still playing) */
-[data-type=youtube].collapsed .tile-head { border-bottom: 1px solid var(--border); }
-[data-type=youtube].collapsed .tile-body { flex: 1 1 auto; padding: 5px 8px; justify-content: center; }
+[data-type=youtube].collapsed .tile-head, [data-type=ytplaylist].collapsed .tile-head { border-bottom: 1px solid var(--border); }
+[data-type=youtube].collapsed .tile-body, [data-type=ytplaylist].collapsed .tile-body { flex: 1 1 auto; padding: 5px 8px; justify-content: center; }
 [data-type=youtube].collapsed .yt-frame { flex: 0 0 0; min-height: 0; height: 0; }
 [data-type=youtube].collapsed .yt-form, [data-type=youtube].collapsed .yt-message { display: none; }
 [data-type=youtube].collapsed .yt-deck { gap: 0; justify-content: center; }
@@ -380,6 +380,45 @@ body.dragging { user-select: none; }
 .yt-frame { position: relative; flex: 1; min-height: 60px; background: #000; border-radius: 7px; overflow: hidden; }
 .yt-frame iframe, .yt-frame .yt-player { position: absolute; inset: 0; width: 100%; height: 100%; }
 .yt-deck .notice { flex: none; }
+
+/* ---------- YouTube Playlist tile (yt-playlist.js) ---------- */
+.ytpl { display: flex; flex-direction: column; gap: 5px; flex: 1; min-height: 0; container-type: size; }
+.ytpl .notice { flex: none; }
+/* the video: 16:9 of the tile's width, but never more than half its height */
+.ytpl-stage { position: relative; flex: none; height: min(56.25cqw, 48cqh); min-height: 60px; background: #000; border-radius: 7px; overflow: hidden; }
+.ytpl-layer { position: absolute; inset: 0; opacity: 0; pointer-events: none; transition: opacity var(--xf, .25s) linear; }
+.ytpl-layer.active { opacity: 1; pointer-events: auto; z-index: 1; }
+.ytpl-now { display: flex; gap: 8px; align-items: baseline; flex: none; min-width: 0; font-size: .92rem; }
+.ytpl-now-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.ytpl-time { color: var(--muted); font-variant-numeric: tabular-nums; font-size: .84rem; flex: none; }
+.ytpl-progress { flex: none; height: 4px; border-radius: 4px; background: var(--panel-3); cursor: pointer; overflow: hidden; }
+.ytpl-progress div { height: 100%; width: 0; background: var(--yt); border-radius: 4px; transition: width .25s linear; }
+.ytpl-controls { flex-wrap: wrap; row-gap: 4px; }
+.ytpl-shuffle.on, .ytpl-repeat.on { background: var(--accent-soft); color: var(--accent-fg); border-color: var(--accent-line); }
+.ytpl-xf { display: inline-flex; align-items: center; gap: 3px; color: var(--muted); }
+.ytpl-xf select { height: 26px; padding: 0 4px; font-size: .84rem; }
+.ytpl-listbar { display: flex; gap: 6px; align-items: center; flex: none; }
+.ytpl-filter { flex: 1; min-width: 0; height: 26px; }
+.ytpl-list { flex: 1; min-height: 40px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px;
+  border-top: 1px solid var(--border); padding-top: 4px; }
+.ytpl-row { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; padding: 3px 6px 3px 2px;
+  background: transparent; border-color: transparent; border-radius: 7px; flex: none; }
+.ytpl-row:hover { background: var(--panel-2); border-color: var(--border); }
+.ytpl-row.current { background: var(--accent-soft); border-color: var(--accent-line); }
+.ytpl-row.current .ytpl-title { color: var(--accent-fg); }
+.ytpl-row.bad { opacity: .45; }
+.ytpl-row img { width: 72px; height: 40.5px; object-fit: cover; border-radius: 4px; background: #000; flex: none; }
+.ytpl-num { width: 2.2em; text-align: right; color: var(--faint); font-size: .8rem; font-variant-numeric: tabular-nums; flex: none; }
+.ytpl-info { display: flex; flex-direction: column; min-width: 0; }
+.ytpl-title { font-size: .9rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; line-height: 1.25; }
+.ytpl-channel { font-size: .78rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* collapsed: just the controls row */
+[data-type=ytplaylist].collapsed .ytpl-stage, [data-type=ytplaylist].collapsed .ytpl-list,
+[data-type=ytplaylist].collapsed .ytpl-listbar, [data-type=ytplaylist].collapsed .ytpl-now,
+[data-type=ytplaylist].collapsed .ytpl-progress, [data-type=ytplaylist].collapsed .yt-form,
+[data-type=ytplaylist].collapsed .yt-message { display: none; }
+[data-type=ytplaylist].collapsed .ytpl { justify-content: center; container-type: normal; }
+[data-type=ytplaylist].collapsed .ytpl-controls { flex-wrap: nowrap; overflow: hidden; }
 
 /* ---------- Website tile ---------- */
 .web-tile { display: flex; flex-direction: column; gap: 6px; flex: 1; min-height: 0; }
