@@ -7,6 +7,14 @@ title KenkuEnhanced helper
 REM Run from the folder this file lives in, wherever you put it.
 cd /d "%~dp0"
 
+REM 0. Installed / release copies have KenkuEnhanced.exe: it starts the helper in
+REM    the background and opens the small KenkuEnhanced window (version, updates,
+REM    Open Kenku). Start this file with --console to use the black window instead.
+if /i not "%~1"=="--console" if exist "%~dp0KenkuEnhanced.exe" (
+  start "" "%~dp0KenkuEnhanced.exe"
+  exit /b 0
+)
+
 REM 1. Which Node.js? The installer / release download brings its own in the
 REM    "node" folder. A copy from GitHub's "Download ZIP" uses an installed one.
 set "NODE=node"
@@ -53,8 +61,8 @@ if errorlevel 1 (
 REM 4. Start the helper. It prints the dashboard address.
 "%NODE%" helper\server.js
 
-REM 75 = the helper closed itself to install an update. The updater starts a
-REM fresh window when it's done, so this one can just close.
+REM 75 = the helper closed itself to install an update (or to restart). A fresh
+REM one starts by itself, so this window can just close.
 if "%ERRORLEVEL%"=="75" exit
 
 REM If the server stops (or fails to start), keep the window open so you can read why.

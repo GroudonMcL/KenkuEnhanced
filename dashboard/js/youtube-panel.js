@@ -143,6 +143,7 @@ const YouTubePanel = (() => {
 
     // YouTube error codes → plain English
     function onError(e) {
+      deck.wantPlay = false;
       const reasons = {
         2: "That doesn't look like a valid video ID.",
         5: "This video can't play in an embedded player.",
@@ -157,6 +158,7 @@ const YouTubePanel = (() => {
 
     function onStateChange(e) {
       const playing = e.data === YT.PlayerState.PLAYING;
+      if (playing || e.data === YT.PlayerState.PAUSED) deck.wantPlay = false; // it started (or you paused it in the video)
       Icons.set(q(".yt-playpause"), playing ? "pause" : "play");
       showFade();
       tile.setStatus(playing ? "● playing" : "", "playing");
@@ -174,6 +176,7 @@ const YouTubePanel = (() => {
     }
 
     deck.createPlayer = () => {
+      deck.created = true;
       deck.player = new YT.Player(q(".yt-player"), {
         width: "100%",
         height: "100%",
@@ -203,8 +206,7 @@ const YouTubePanel = (() => {
 
     q(".yt-playpause").addEventListener("click", () => {
       if (!deck.ready) return;
-      const playing = deck.player.getPlayerState() === YT.PlayerState.PLAYING;
-      playing ? deck.player.pauseVideo() : deck.player.playVideo();
+      deck.isPlaying() ? deck.pause() : deck.play();
     });
 
     // Loop: single videos restart in onStateChange; playlists use setLoop.
@@ -234,8 +236,30 @@ const YouTubePanel = (() => {
     deck.applyOutput = () => deck.ready && deck.player.setVolume(Math.round(deck.level * Mixer.factor()));
     deck.currentVolume = () => deck.level;
     deck.isPlaying = () => deck.ready && deck.player.getPlayerState() === YT.PlayerState.PLAYING;
-    deck.pause = () => deck.ready && deck.player.pauseVideo();
-    deck.play = () => deck.ready && deck.player.playVideo();
+    deck.pause = () => {
+      deck.wantPlay = false;
+      if (deck.ready) deck.player.pauseVideo();
+    };
+    // Start playing. YouTube ignores playVideo() while a video is still being
+    // cued (right after a scene built this tile), and a player that has nothing
+    // loaded yet can't play at all. So if it isn't cued/paused yet, load the video
+    // with "play" instead, and check a moment later that it really started.
+    deck.play = () => {
+      if (!deck.ready) return;
+      const S = YT.PlayerState;
+      const state = deck.player.getPlayerState();
+      deck.wantPlay = true;
+      if (deck.target && (state === S.UNSTARTED || !deck.player.getVideoData?.().video_id)) {
+        deck.resume(deck.position());
+      } else {
+        deck.player.playVideo();
+      }
+      clearTimeout(deck.playCheck);
+      deck.playCheck = setTimeout(() => {
+        const s = deck.ready && deck.player.getPlayerState();
+        if (deck.wantPlay && deck.target && ![S.PLAYING, S.BUFFERING].includes(s)) deck.resume(deck.position());
+      }, 2500);
+    };
     deck.setLoop = (on) => {
       deck.saved.loop = !!on;
       q(".yt-loop").classList.toggle("on", deck.saved.loop);
@@ -312,6 +336,7 @@ const YouTubePanel = (() => {
         deck.setLoop(!!c.loop);
       },
       destroy: () => {
+        clearTimeout(deck.playCheck);
         deck.player?.destroy?.();
         decks.splice(decks.indexOf(deck), 1);
         renderResults();
@@ -388,10 +413,22 @@ const YouTubePanel = (() => {
         b.onclick = () => into(targetDeck);
         actions.appendChild(b);
       }
+      if (r.listId) {
+        // A playlist: the Playlist tile shows its videos as a list you can click
+        const pl = document.createElement("button");
+        pl.className = "small" + (targetDeck ? "" : " primary");
+        pl.textContent = "＋ Playlist tile";
+        pl.title = "Add a Playlist tile: the video at the top, every video in the playlist below it";
+        pl.onclick = () => {
+          Board.add("ytplaylist", { url, volume: 60, title });
+          $("yt-dialog").close();
+        };
+        actions.appendChild(pl);
+      }
       const add = document.createElement("button");
-      add.className = "small" + (targetDeck ? "" : " primary");
-      add.textContent = "＋ New tile";
-      add.title = "Add a YouTube tile with this (press ▶ there to play)";
+      add.className = "small" + (targetDeck || r.listId ? "" : " primary");
+      add.textContent = r.listId ? "＋ Video tile" : "＋ New tile";
+      add.title = r.listId ? "Add a plain YouTube tile that plays this playlist (no list)" : "Add a YouTube tile with this (press ▶ there to play)";
       add.onclick = () => {
         Board.add("youtube", { url, volume: 60, loop: false, title });
         $("yt-dialog").close();
@@ -409,16 +446,17 @@ const YouTubePanel = (() => {
   // The "+ YouTube" dialog: search, or paste a link. If `deck` is given, results
   // can go into that player instead of a new tile.
   let targetDeck = null;
-  function openDialog(deck = null, query = "") {
+  function openDialog(deck = null, query = "", type = "video") {
     targetDeck = deck;
     $("yt-dialog-title").textContent = deck ? `Change “${shorten(deck.displayName())}”` : "Add a YouTube tile";
     $("yt-link").value = "";
     renderResults();
     $("yt-dialog").showModal();
+    if (deck?.kind === "playlist") $("yt-search-type").value = "playlist";
     if (query) {
       $("yt-search").value = query;
-      $("yt-search-type").value = "video";
-      search(query, "video");
+      $("yt-search-type").value = type;
+      search(query, type);
     } else {
       $("yt-search").focus();
     }
@@ -469,11 +507,17 @@ const YouTubePanel = (() => {
     $("yt-link-form").addEventListener("submit", (e) => {
       e.preventDefault();
       const text = $("yt-link").value.trim();
-      if (!parse(text)) {
+      const t = parse(text);
+      if (!t) {
         searchMessage("Couldn't find a video or playlist ID in that. Paste a YouTube link or an ID.", "error");
         return;
       }
+      if (e.submitter?.value === "playlist" && !t.listId) {
+        searchMessage("That's a link to one video. For a Playlist tile, paste a link with “list=” in it (open the playlist on YouTube and copy the address).", "error");
+        return;
+      }
       if (targetDeck && decks.includes(targetDeck)) targetDeck.loadUrl(text, false);
+      else if (e.submitter?.value === "playlist") Board.add("ytplaylist", { url: text, volume: 60 });
       else Board.add("youtube", { url: text, volume: 60, loop: false });
       $("yt-dialog").close();
     });
@@ -481,7 +525,7 @@ const YouTubePanel = (() => {
     // YouTube's script calls this global function once it has loaded.
     window.onYouTubeIframeAPIReady = () => {
       apiReady = true;
-      decks.forEach((d) => d.player || d.createPlayer());
+      decks.forEach((d) => d.created || d.createPlayer());
     };
     const s = document.createElement("script");
     s.src = "https://www.youtube.com/iframe_api";
@@ -494,5 +538,17 @@ const YouTubePanel = (() => {
     openDialog(null, q);
   }
 
-  return { init, parse, decks: () => decks, ensureDecks, searchFor };
+  // Other YouTube tiles (the Playlist tile, yt-playlist.js) join the same list,
+  // so the Mixer, Duck and scene fades treat them like any YouTube tile.
+  function addDeck(deck) {
+    decks.push(deck);
+    if (apiReady) deck.createPlayer();
+  }
+  function removeDeck(deck) {
+    const i = decks.indexOf(deck);
+    if (i >= 0) decks.splice(i, 1);
+    renderResults();
+  }
+
+  return { init, parse, decks: () => decks, ensureDecks, searchFor, openDialog, addDeck, removeDeck, isApiReady: () => apiReady };
 })();

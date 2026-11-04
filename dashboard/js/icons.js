@@ -21,6 +21,8 @@ const Icons = (() => {
     zoom: `<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5M8 11h6"/>`,
     // tile-type marks in the title bar
     video: `<rect x="2.5" y="5" width="19" height="14" rx="3.5"/><path ${F} d="M10 9.2v5.6a.5.5 0 0 0 .76.43l4.5-2.8a.5.5 0 0 0 0-.86l-4.5-2.8a.5.5 0 0 0-.76.43z"/>`,
+    // a video with a list under it (YouTube Playlist tile)
+    ytlist: `<rect x="2.5" y="3" width="13" height="9" rx="2.5"/><path ${F} d="M7.5 5.6v3.8a.4.4 0 0 0 .6.34l3-1.9a.4.4 0 0 0 0-.68l-3-1.9a.4.4 0 0 0-.6.34z"/><path d="M2.5 16h19M2.5 20.5h19M18.5 7.5h3"/>`,
     globe: `<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18a14 14 0 0 1 0-18z"/>`,
     music: `<path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>`,
     pads: `<rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/>`,

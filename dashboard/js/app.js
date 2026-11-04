@@ -3,6 +3,7 @@
 (() => {
   const status = document.getElementById("kenku-status");
   let wasOk = null;
+  let pageVersion = null; // the helper's version when this page loaded
 
   // Ask the helper's /health route every 5 seconds whether Kenku is reachable.
   async function checkHealth() {
@@ -11,6 +12,11 @@
     let tip = "The helper server isn't answering. Is the KenkuEnhanced window still open?";
     try {
       const h = await (await fetch("/health")).json();
+      pageVersion ??= h.version;
+      if (h.version !== pageVersion) {
+        const busy = YouTubePanel.decks().some((d) => d.isPlaying()) || EmbedPanel.instances().some((w) => w.tile.config().url);
+        Update.helperVersion(h.version, !busy);
+      }
       if (h.kenku.ok) {
         cls = "status-ok"; text = "Kenku connected";
         tip = `Kenku Remote at ${h.kenku.url} – ${h.kenku.playlists} playlists`;
@@ -36,6 +42,7 @@
   // the board build the current one.
   KenkuPanel.init();
   YouTubePanel.init();
+  YTPlaylist.init();  // the YouTube Playlist tile
   EmbedPanel.init();
   Mixer.init();      // (before Scenes builds the board: it registers the Mixer tile)
   Links.init();

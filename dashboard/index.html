@@ -70,6 +70,52 @@
     </div>
   </template>
 
+  <!-- Body of a YouTube Playlist tile (yt-playlist.js) -->
+  <template id="ytpl-template">
+    <div class="ytpl">
+      <form class="tile-url yt-form">
+        <input class="yt-url" type="text" placeholder="YouTube playlist link (with “list=” in it)" autocomplete="off">
+        <button type="submit" class="small primary">Load</button>
+      </form>
+      <div class="notice yt-message" hidden></div>
+      <div class="ytpl-stage">
+        <div class="yt-frame ytpl-layer active"><div class="yt-player"></div></div>
+        <div class="yt-frame ytpl-layer"><div class="yt-player"></div></div>
+      </div>
+      <div class="ytpl-now">
+        <span class="ytpl-now-title">Nothing loaded yet</span>
+        <span class="ytpl-time"></span>
+      </div>
+      <div class="ytpl-progress"><div></div></div>
+      <div class="tile-controls ytpl-controls">
+        <button type="button" class="small ytpl-prev" title="Previous video"></button>
+        <button type="button" class="small yt-playpause" title="Play / pause"></button>
+        <button type="button" class="small ytpl-next" title="Next video"></button>
+        <button type="button" class="small yt-fade" title="Fade in"></button>
+        <button type="button" class="small ytpl-shuffle" title="Shuffle"></button>
+        <button type="button" class="small ytpl-repeat" title="Repeat"></button>
+        <label class="ytpl-xf" title="Fade from one video into the next (crossfade)">
+          <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6c6 0 12 12 18 12M3 18C9 18 15 6 21 6"/></svg>
+          <select aria-label="Crossfade between videos">
+            <option value="0">no fade</option>
+            <option value="2">2 s</option>
+            <option value="5">5 s</option>
+            <option value="10">10 s</option>
+            <option value="15">15 s</option>
+          </select>
+        </label>
+        <span class="vol-icon"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg></span>
+        <input class="yt-volume" type="range" min="0" max="100" step="1" aria-label="Volume">
+        <span class="volume-value yt-volume-value"></span>
+      </div>
+      <div class="ytpl-listbar">
+        <input class="ytpl-filter" type="search" placeholder="Find in this playlist" autocomplete="off">
+        <span class="ytpl-count hint"></span>
+      </div>
+      <div class="ytpl-list" role="list"></div>
+    </div>
+  </template>
+
   <!-- Body of a Website tile (embed-panel.js) -->
   <template id="web-tile-template">
     <div class="web-tile">
@@ -133,7 +179,8 @@
       </div>
       <form id="yt-link-form" class="url-row">
         <input id="yt-link" type="text" placeholder="…or paste a YouTube link" autocomplete="off">
-        <button type="submit">Use link</button>
+        <button type="submit" value="video" title="A YouTube tile that plays this video (or playlist)">Use link</button>
+        <button type="submit" value="playlist" title="A Playlist tile: the video at the top, every video in the playlist below it to click">＋ Playlist tile</button>
       </form>
       <div id="yt-search-message" class="notice" hidden></div>
       <div id="yt-results" class="yt-results" hidden></div>
@@ -409,6 +456,7 @@
   <script src="js/board.js"></script>
   <script src="js/kenku-panel.js"></script>
   <script src="js/youtube-panel.js"></script>
+  <script src="js/yt-playlist.js"></script>
   <script src="js/embed-panel.js"></script>
   <script src="js/mixer.js"></script>
   <script src="js/sounds-panel.js"></script>

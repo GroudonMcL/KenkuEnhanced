@@ -22,3 +22,6 @@ dist/
 
 # One-click update downloads and backups
 update/
+
+# The helper's messages when it runs in the background
+logs/

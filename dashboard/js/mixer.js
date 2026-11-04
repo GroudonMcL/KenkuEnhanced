@@ -147,7 +147,7 @@ const Mixer = (() => {
       fadingOut: kenkuSrc.dir === "out", on: !!pb?.playing,
     }];
     for (const d of YouTubePanel.decks()) {
-      list.push({ id: "yt:" + d.tile.id, icon: "video", src: d, controllable: true, name: d.displayName(),
+      list.push({ id: "yt:" + d.tile.id, icon: d.kind === "playlist" ? "ytlist" : "video", src: d, controllable: true, name: d.displayName(),
         fadingOut: d.fadeDir === "out", on: d.isPlaying() });
     }
     for (const w of EmbedPanel.instances()) {

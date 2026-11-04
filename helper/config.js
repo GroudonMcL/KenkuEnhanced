@@ -22,7 +22,20 @@ const defaults = {
   // passThrough: { tta: true, mynoise: false, … } – which sites the helper passes through
   // mobile:      { mynoise: true, … }               – ask those sites for their mobile version
   experimental: { passThrough: {}, mobile: {} },
+  // The KenkuEnhanced window (dashboard/launcher.html, helper/launcher.js)
+  launcher: {
+    kenkuPath: defaultKenkuPath(),
+    autoOpenKenku: true,  // open Kenku once KenkuEnhanced is up to date
+    stopWithKenku: true,  // the hidden helper stops a minute after Kenku closes
+  },
 };
+
+// Where Kenku FM's installer puts it on Windows
+function defaultKenkuPath() {
+  if (process.platform !== "win32") return "";
+  const local = process.env.LOCALAPPDATA || path.join(process.env.USERPROFILE || "C:\\Users\\Default", "AppData", "Local");
+  return path.join(local, "kenku-fm", "kenku-fm.exe");
+}
 
 let loadError = null; // set if config.json exists but couldn't be read
 
@@ -51,6 +64,7 @@ function loadConfig() {
     kenku: { ...defaults.kenku, ...(user.kenku || {}) },
     apiKeys: { ...defaults.apiKeys, ...(user.apiKeys || {}) },
     experimental: migrateExperimental(user.experimental),
+    launcher: { ...defaults.launcher, ...(user.launcher || {}) },
   };
 }
 
@@ -81,6 +95,7 @@ function saveConfig(changes) {
     downloadsFolder: changes.downloadsFolder ?? config.downloadsFolder,
     apiKeys: { ...config.apiKeys, ...(changes.apiKeys || {}) },
     experimental: { ...config.experimental, ...(changes.experimental || {}) },
+    launcher: { ...config.launcher, ...(changes.launcher || {}) },
   };
   if (!next.host) delete next.host; // keep the file tidy when not used
 

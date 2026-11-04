@@ -57,6 +57,17 @@ jobs:
           if (Test-Path $nodeLicence) { Copy-Item $nodeLicence "$out/node/LICENSE" }
           & "$out/node/node.exe" --version
 
+      - name: Build KenkuEnhanced.exe (starts the helper without a black window)
+        shell: pwsh
+        run: |
+          # The C# compiler that comes with Windows (.NET Framework 4) – nothing to install.
+          $csc = Join-Path $env:WINDIR "Microsoft.NET\Framework64\v4.0.30319\csc.exe"
+          & $csc /nologo /target:winexe /optimize+ /r:System.Windows.Forms.dll `
+            "/win32icon:installer\launcher\KenkuEnhanced.ico" `
+            "/out:build\KenkuEnhanced\KenkuEnhanced.exe" installer\launcher\KenkuEnhanced.cs
+          if ($LASTEXITCODE) { throw "csc failed" }
+          Get-Item build/KenkuEnhanced/KenkuEnhanced.exe | Format-List Name, Length
+
       - name: Smoke test (start the helper from the release folder)
         shell: pwsh
         run: |
@@ -77,8 +88,24 @@ jobs:
           } finally {
             Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
           }
+          # KenkuEnhanced.exe --background: starts the helper hidden (as the sign-in
+          # shortcut does), then the uninstaller's "launch.js --stop" stops it.
+          # (Not Start-Process -Wait: that would also wait for the helper it leaves running.)
+          $exe = Start-Process -FilePath "build/KenkuEnhanced/KenkuEnhanced.exe" -ArgumentList "--background" `
+                 -WorkingDirectory "build/KenkuEnhanced" -PassThru
+          if (-not $exe.WaitForExit(60000)) { throw "KenkuEnhanced.exe --background didn't finish within a minute" }
+          if ($exe.ExitCode) { throw "KenkuEnhanced.exe --background exited with $($exe.ExitCode)" }
+          $h = Invoke-RestMethod http://127.0.0.1:4000/api/launcher/status
+          if ($h.mode -ne "window" -or $h.version -ne "${{ steps.ver.outputs.version }}") { throw "The background helper isn't right: $($h | ConvertTo-Json)" }
+          Invoke-WebRequest http://127.0.0.1:4000/launcher.html -UseBasicParsing | Out-Null
+          & build/KenkuEnhanced/node/node.exe build/KenkuEnhanced/helper/launch.js --stop
+          Start-Sleep -Seconds 2
+          $still = $true
+          try { Invoke-RestMethod http://127.0.0.1:4000/health -TimeoutSec 2 | Out-Null } catch { $still = $false }
+          if ($still) { throw "launch.js --stop didn't stop the helper" }
+          "KenkuEnhanced.exe started the helper in the background, and --stop stopped it."
           # The smoke test must not leave files behind in the package
-          Remove-Item -Recurse -Force build/KenkuEnhanced/data, build/KenkuEnhanced/update, build/KenkuEnhanced/config.json -ErrorAction SilentlyContinue
+          Remove-Item -Recurse -Force build/KenkuEnhanced/data, build/KenkuEnhanced/update, build/KenkuEnhanced/logs, build/KenkuEnhanced/config.json -ErrorAction SilentlyContinue
 
       - name: Make the portable zip
         shell: pwsh
