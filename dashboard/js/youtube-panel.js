@@ -159,12 +159,16 @@ const YouTubePanel = (() => {
     function onStateChange(e) {
       const playing = e.data === YT.PlayerState.PLAYING;
       if (playing || e.data === YT.PlayerState.PAUSED) deck.wantPlay = false; // it started (or you paused it in the video)
+      // The tile cues its video when it's built; if a scene says "play" while that cue
+      // is still loading, the cue lands afterwards and leaves it at the thumbnail
+      // (the big red ▶). So when it should be playing, start it as soon as it's cued.
+      if (e.data === YT.PlayerState.CUED && deck.wantPlay) deck.player.playVideo();
       Icons.set(q(".yt-playpause"), playing ? "pause" : "play");
       showFade();
       tile.setStatus(playing ? "● playing" : "", "playing");
       // The tile takes the video's name once it's loaded
       if (playing || e.data === YT.PlayerState.CUED) {
-        const title = deck.player.getVideoData?.().title;
+        const title = deck.player.getVideoData?.()?.title;
         if (title) tile.setTitle(title);
       }
       // Loop a single video by starting it again when it ends.
@@ -249,7 +253,7 @@ const YouTubePanel = (() => {
       const S = YT.PlayerState;
       const state = deck.player.getPlayerState();
       deck.wantPlay = true;
-      if (deck.target && (state === S.UNSTARTED || !deck.player.getVideoData?.().video_id)) {
+      if (deck.target && (state === S.UNSTARTED || !deck.player.getVideoData?.()?.video_id)) {
         deck.resume(deck.position());
       } else {
         deck.player.playVideo();
