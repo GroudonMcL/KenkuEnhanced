@@ -71,6 +71,9 @@ jobs:
             echo "::error::Couldn't check GitHub for a release v$cur: $out"
             exit 1
           fi
+          # Who the version commit and the (annotated) tag are by – both need it
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           if [ "$released" = yes ]; then
             next=$(node -e '
               const [a, b, c] = process.argv[1].split(".").map(Number);
@@ -79,8 +82,6 @@ jobs:
             ' "$cur" "$BUMP")
             echo "v$cur is already released → v$next ($BUMP)"
             npm version "$next" --no-git-tag-version --ignore-scripts > /dev/null  # package.json + package-lock.json
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git commit -am "Release v$next"
           else
             next=$cur
