@@ -202,7 +202,13 @@ current scene (the same tiles) or as an empty board. Then arrange its tiles.
 - YouTube tiles that were **playing when you last left the new scene** fade back in, from
   where they were.
 
-A YouTube or Website tile that's in both scenes keeps the size you last gave it.
+A YouTube video that fades in starts silently and waits until a few seconds of it have
+loaded, so the fade starts when there's sound and isn't cut short by buffering. If YouTube
+doesn't start it, it's asked again (and reloaded if need be); for the next 30 seconds a
+video that gets stuck is nudged back into playing from where it got to.
+
+Every tile goes back to the place and size it has in the scene you switch to – a tile
+that's in both scenes (it keeps playing) moves and resizes to that scene's layout.
 
 A small note at the bottom shows what's keeping, fading out and fading in:
 

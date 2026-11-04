@@ -23,7 +23,6 @@
 //   { badge: "YouTube", badgeClass: "y", icon: "video", // icon = the mark in the title bar (icons.js)
 //     size: { w: 4, h: 6, minW: 2, minH: 3 },
 //     collapsedRows: 4,            // height when collapsed (default: just the title bar)
-//     keepSize: true,              // kept by a scene switch → keeps its current size
 //     autoable: true,              // show the "▶ auto" switch
 //     fitContent: false,           // height follows the content
 //     key(config) → "yt:abc",      // tiles with the same key are "the same thing"
@@ -297,7 +296,9 @@ const Board = (() => {
       items.push({
         id: t.id,
         type: t.type,
-        x: n.x ?? 0, y: n.y ?? 0, w: n.w ?? 4, h: n.h ?? 4,
+        // gridstack leaves w/h out when they're 1 or the tile's minimum (a tile made as
+        // narrow as it goes) – so a missing one means the minimum, not a default size.
+        x: n.x ?? 0, y: n.y ?? 0, w: n.w ?? n.minW ?? 1, h: n.h ?? n.minH ?? 1,
         collapsed: t.collapsed || undefined,
         expandedH: t.collapsed ? t.expandedH : undefined,
         auto: t.auto || undefined,
@@ -332,7 +333,8 @@ const Board = (() => {
   // ===========================================================================
   // Tiles that are "the same thing" in both layouts (same key: same video, same
   // playlist, same website…) are KEPT – moved and resized, never rebuilt – so
-  // whatever they're playing carries on without a gap. The others are detached:
+  // whatever they're playing carries on without a gap – and take the place and size
+  // the new layout saved for them. The others are detached:
   // hidden but still alive, so the caller can fade them out, then dispose() them.
   // Returns { kept: [{ tile, item }], added: [{ tile, item }], leaving: [tile] }.
   function applyLayout(layout) {
@@ -364,23 +366,27 @@ const Board = (() => {
         t.dispose = () => {};
       };
     }
-    // Kept tiles take the new layout's place and settings. Their size too – except
-    // keepSize tiles (YouTube, websites), which keep the size you last gave them.
-    for (const { tile, item } of kept) {
+    // Kept tiles go exactly where this scene saved them, at the size it saved.
+    // Moving them one by one while the others still sit where the old scene had
+    // them makes gridstack push tiles out of each other's way, and the result
+    // depends on the order (a mixer that was above a playlist ends up below it).
+    // So first park every kept tile below everything, then put each in its place:
+    // the saved places don't overlap, so nothing gets pushed.
+    let bottom = 0;
+    for (const n of grid.engine.nodes) bottom = Math.max(bottom, (n.y || 0) + (n.h || 0));
+    for (const i of items) bottom = Math.max(bottom, (i.y || 0) + (i.h || 0));
+    for (const { tile } of kept) {
       const node = tile.el.gridstackNode;
-      const size = tile.def.keepSize && node
-        ? { w: node.w, h: tile.collapsed ? tile.expandedH : node.h }
-        : null;
+      if (!node) continue;
+      grid.update(tile.el, { y: bottom });
+      bottom += node.h || 1;
+    }
+    for (const { tile, item } of kept) {
       tiles.delete(tile.id);
       tile.id = item.id || newId();
       tiles.set(tile.id, tile);
       tile.applySaved(item);
-      let place = { ...item, id: tile.id };
-      if (size) {
-        tile.expandedH = size.h;
-        place = { ...place, w: size.w, h: size.h };
-      }
-      grid.update(tile.el, widgetOpts(tile.def, place));
+      grid.update(tile.el, widgetOpts(tile.def, { ...item, id: tile.id }));
       if (tile.el.gridstackNode) tile.el.gridstackNode.id = tile.id; // snapshot() matches tiles by this id
     }
     // New tiles

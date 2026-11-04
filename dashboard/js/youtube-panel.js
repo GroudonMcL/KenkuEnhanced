@@ -54,6 +54,136 @@ const YouTubePanel = (() => {
   }
 
   // ---------------------------------------------------------------------------
+  // Starting a video so it really plays (scenes and fade buttons use this)
+  // ---------------------------------------------------------------------------
+  // YouTube is unreliable about starting: play requests are ignored while a video
+  // is still being cued, a cue can land after a play and stop it at the thumbnail,
+  // and a video that starts straight away often stalls a second later to buffer.
+  // So a fade-in doesn't just say "play":
+  //   1. it gets the video playing (silently – the caller has the volume at 0),
+  //      nudging it with play again, then loading it afresh, if it doesn't start;
+  //   2. it pauses until a few seconds are buffered (YouTube keeps loading while
+  //      paused), then rewinds to where it should start and plays it for real;
+  // and only then resolves true, so the fade starts when there's sound to fade.
+  // Afterwards watch() keeps an eye on it for a while (see below).
+  //
+  // p = {
+  //   player()     the YouTube player that plays (the playlist tile has two)
+  //   ready()      the right video is loaded/cued, so play/seek are enough
+  //   load()       (re)load the video from `startAt`, playing
+  //   startAt      seconds – where it should start
+  //   alive()      still wanted? (a newer scene switch / fade stops it)
+  // }
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const BUFFER_AHEAD = 4;    // seconds buffered before it plays for real
+  const BUFFER_WAIT = 8000;  // …but don't wait longer than this for them
+
+  async function warmStart(deck, p) {
+    deck.starting = true;
+    try {
+      return await warmStartSteps(deck, p);
+    } finally {
+      deck.starting = false;
+    }
+  }
+  async function warmStartSteps(deck, p) {
+    const S = YT.PlayerState;
+    const token = (deck.startToken = (deck.startToken || 0) + 1);
+    const alive = () => !deck.destroyed && deck.startToken === token && p.alive();
+    const state = () => p.player()?.getPlayerState?.();
+    const waitFor = async (pred, ms) => {
+      for (let t = 0; t < ms; t += 100) {
+        if (!alive()) return false;
+        if (pred()) return true;
+        await sleep(100);
+      }
+      return alive() && pred();
+    };
+    const playing = () => state() === S.PLAYING;
+
+    // 1. Get it playing
+    let started = false;
+    for (let attempt = 0; attempt < 3 && !started; attempt++) {
+      if (!alive()) return false;
+      if (attempt === 0 && p.ready() && [S.CUED, S.PAUSED, S.ENDED].includes(state())) {
+        if (state() === S.ENDED || Math.abs((p.player().getCurrentTime?.() || 0) - p.startAt) > 1) p.player().seekTo(p.startAt, true);
+        p.player().playVideo();
+      } else {
+        p.load();
+      }
+      // Up to ~10 s per try; if it sits cued/paused/unstarted for 3 s, nudge it
+      for (let t = 0; t < 10000 && !started; t += 3000) {
+        started = await waitFor(playing, 3000);
+        if (!started && alive() && state() !== S.BUFFERING) p.player()?.playVideo?.();
+      }
+    }
+    if (!started || !alive()) return false;
+
+    // 2. Let it buffer a few seconds ahead before it plays for real
+    const pl = p.player();
+    const ahead = () => {
+      const d = pl.getDuration?.() || 0;
+      const f = pl.getVideoLoadedFraction?.() || 0;
+      if (!d || f >= 0.99) return Infinity; // live streams / fully loaded
+      return f * d - (pl.getCurrentTime?.() || 0);
+    };
+    if (ahead() < BUFFER_AHEAD) {
+      deck.holding = true; // our own pause – not "you paused it"
+      pl.pauseVideo();
+      await waitFor(() => ahead() >= BUFFER_AHEAD, BUFFER_WAIT);
+      deck.holding = false;
+      if (!alive()) return false;
+    }
+    // Back to where it should start (it ran silently for a moment)
+    if ((pl.getCurrentTime?.() || 0) - p.startAt > 1) pl.seekTo(p.startAt, true);
+    if (!playing()) pl.playVideo();
+    // 3. Playing for real?
+    if (!(await waitFor(playing, 4000))) {
+      if (!alive()) return false;
+      pl.playVideo();
+      if (!(await waitFor(playing, 4000))) return false;
+    }
+    return alive();
+  }
+
+  // After a fade-in: for the next 30 s, check every second that it's still playing.
+  // Stuck (cued / unstarted / buffering much too long) → play again, then reload
+  // from where it got to. Stops when you pause it, it ends, or something else
+  // takes over the tile (deck.pause(), a new start, a new video).
+  // p = { player(), reload(time) }
+  async function watch(deck, p) {
+    const S = YT.PlayerState;
+    const token = (deck.watchToken = (deck.watchToken || 0) + 1);
+    const t0 = Date.now();
+    let stuckSince = null;
+    let kicks = 0;
+    while (Date.now() - t0 < 30000 && kicks < 4) {
+      await sleep(1000);
+      if (deck.destroyed || deck.watchToken !== token) return;
+      const pl = p.player();
+      const s = pl?.getPlayerState?.();
+      if (s === S.PLAYING || deck.holding) { stuckSince = null; continue; }
+      if (s === S.ENDED) return;
+      // A pause in the first few seconds is YouTube/the browser stopping it, not you
+      if (s === S.PAUSED && Date.now() - t0 > 5000) return;
+      stuckSince ??= Date.now();
+      const limit = s === S.BUFFERING ? 12000 : 2500;
+      if (Date.now() - stuckSince < limit) continue;
+      kicks++;
+      stuckSince = null;
+      const time = Math.floor(pl?.getCurrentTime?.() || 0);
+      if (s === S.BUFFERING || kicks > 1) p.reload(time);
+      else pl?.playVideo?.();
+    }
+  }
+  // Stop watching / starting (pause button, new video, …)
+  function stopWatching(deck) {
+    deck.watchToken = (deck.watchToken || 0) + 1;
+    deck.startToken = (deck.startToken || 0) + 1;
+    deck.holding = false;
+  }
+
+  // ---------------------------------------------------------------------------
   // One player = one tile. Its settings { url, volume, loop } are saved with
   // the board layout.
   // ---------------------------------------------------------------------------
@@ -135,6 +265,7 @@ const YouTubePanel = (() => {
       }
       q(".yt-url").value = text.trim();
       deck.saved.url = text.trim();
+      stopWatching(deck);
       if (title) tile.setTitle(title);
       showLinkBox(false);
       save();
@@ -242,6 +373,7 @@ const YouTubePanel = (() => {
     deck.isPlaying = () => deck.ready && deck.player.getPlayerState() === YT.PlayerState.PLAYING;
     deck.pause = () => {
       deck.wantPlay = false;
+      stopWatching(deck);
       if (deck.ready) deck.player.pauseVideo();
     };
     // Start playing. YouTube ignores playVideo() while a video is still being
@@ -289,6 +421,29 @@ const YouTubePanel = (() => {
     };
     deck.displayName = () => tile.title();
 
+    // Start it so it really plays, and resolve true once it does (see warmStart).
+    // pos = { time, index } to start from there; null = from where it is now.
+    deck.startSmooth = (pos, alive = () => true) => {
+      if (!deck.ready || !deck.target) return Promise.resolve(false);
+      clearTimeout(deck.playCheck);
+      deck.wantPlay = false;
+      stopWatching(deck);
+      const vid = () => deck.player.getVideoData?.()?.video_id;
+      const ended = deck.player.getPlayerState() === YT.PlayerState.ENDED;
+      const from = pos || (ended ? null : deck.position()) || { time: 0 };
+      return warmStart(deck, {
+        player: () => deck.player,
+        ready: () => !pos && !!vid() && (!!deck.target.listId || vid() === deck.target.videoId),
+        load: () => deck.resume(from),
+        startAt: from.time || 0,
+        alive,
+      });
+    };
+    deck.watch = () => watch(deck, {
+      player: () => deck.player,
+      reload: (time) => deck.resume({ ...(deck.position() || {}), time }),
+    });
+
     // The fade button: fade out (then pause), or fade in (start playing first).
     // Pressing it again while it's fading turns the fade around.
     function showFade() {
@@ -311,11 +466,21 @@ const YouTubePanel = (() => {
       } else {
         deck.fadeDir = "in";
         showFade();
+        const mine = (deck.fadeSeq = (deck.fadeSeq || 0) + 1);
         if (!deck.isPlaying()) {
           deck.setVolume(0, false);
-          deck.play();
+          // Fade in only once it's really playing
+          if (!(await deck.startSmooth(null, () => deck.fadeSeq === mine && deck.fadeDir === "in"))) {
+            if (deck.fadeSeq === mine && deck.fadeDir === "in") {
+              deck.fadeDir = null;
+              deck.setVolume(deck.saved.volume, false);
+            }
+            showFade();
+            return;
+          }
         }
         if (await Mixer.fade(deck, deck.saved.volume, ms)) deck.fadeDir = null;
+        if (deck.fadeSeq === mine) deck.watch();
       }
       showFade();
     };
@@ -340,6 +505,8 @@ const YouTubePanel = (() => {
         deck.setLoop(!!c.loop);
       },
       destroy: () => {
+        deck.destroyed = true;
+        stopWatching(deck);
         clearTimeout(deck.playCheck);
         deck.player?.destroy?.();
         decks.splice(decks.indexOf(deck), 1);
@@ -476,7 +643,6 @@ const YouTubePanel = (() => {
       icon: "video",
       autoable: true,
       collapsedRows: 4, // collapsed: the title bar plus the ▶ / loop / volume row
-      keepSize: true,   // a scene switch that keeps this video keeps its size too
       // the same video/playlist in two scenes = the same tile (keeps playing)
       key: (c) => {
         const t = parse(c.url || "");
@@ -554,5 +720,9 @@ const YouTubePanel = (() => {
     renderResults();
   }
 
-  return { init, parse, decks: () => decks, ensureDecks, searchFor, openDialog, addDeck, removeDeck, isApiReady: () => apiReady };
+  return {
+    init, parse, decks: () => decks, ensureDecks, searchFor, openDialog, addDeck, removeDeck,
+    isApiReady: () => apiReady,
+    warmStart, watch, stopWatching, // (the Playlist tile starts its videos the same way)
+  };
 })();
