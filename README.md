@@ -530,7 +530,7 @@ helper/       Node.js helper server (Express)
 dashboard/    the web page (plain HTML/CSS/JS, no build step); launcher.html = the KenkuEnhanced window
 data/         your scenes, links and the ✨ Vibe model (created automatically, not uploaded to GitHub)
 installer/    Inno Setup script for the Windows installer; launcher/ = KenkuEnhanced.exe (C#) + icon
-.github/      release.yml builds the installer + portable ZIP when a version is tagged
+.github/      release.yml: Run workflow → next version, installer + portable ZIP (docs/RELEASING.md)
 docs/         PLAN.md (roadmap), kenku-remote-api.md (verified API reference), RELEASING.md
 ```
 

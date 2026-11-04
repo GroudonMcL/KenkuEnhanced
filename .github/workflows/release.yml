@@ -1,9 +1,14 @@
 # Builds the Windows downloads and publishes a GitHub release.
 #
-#   • Push a tag like v0.2.0 (matching "version" in package.json) → builds and
-#     publishes the release. Every installed dashboard then shows "Update available".
-#   • Run it by hand (Actions tab → Release → Run workflow) → builds only, and puts
-#     the files under the run's "Artifacts" so you can test them first.
+#   • Run it by hand (Actions tab → Release → Run workflow, on main) → a new version:
+#     it bumps "version" in package.json (patch by default; minor/major to choose),
+#     commits that to main, tags it vX.Y.Z, then builds and publishes the release.
+#     Every installed dashboard then shows "Update available".
+#     (If the version in package.json was never released, it releases that one as is.)
+#     Pick "test-build-only" to just build, with the files under the run's
+#     "Artifacts" so you can test them first – no new version.
+#   • Push a tag like v0.2.0 yourself (matching "version" in package.json) → builds
+#     and publishes that version.
 #
 # Produces:
 #   KenkuEnhanced-Setup-vX.Y.Z.exe   installer (Node.js included, no admin needed)
@@ -15,15 +20,73 @@ on:
   push:
     tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      bump:
+        description: "New version: patch = fixes (0.1.1 → 0.1.2), minor = new features (0.1.1 → 0.2.0), major (→ 1.0.0). test-build-only = build without a new version."
+        type: choice
+        default: patch
+        options: [patch, minor, major, test-build-only]
 
 permissions:
   contents: write
 
+# One release at a time (two runs at once would pick the same version number)
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
+  # Run by hand: work out the next version, commit it to main and tag it.
+  # (Tags pushed with the workflow's own token don't start another run, so the
+  # build below publishes it in this same run.)
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.bump.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v6
+        if: github.event_name == 'workflow_dispatch' && inputs.bump != 'test-build-only'
+
+      - name: Bump the version, commit and tag it
+        id: bump
+        if: github.event_name == 'workflow_dispatch' && inputs.bump != 'test-build-only'
+        env:
+          BUMP: ${{ inputs.bump }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_REF" != "refs/heads/$DEFAULT_BRANCH" ]; then
+            echo "::error::Run the release on $DEFAULT_BRANCH (you picked $GITHUB_REF_NAME). For a test build of another branch, pick test-build-only."
+            exit 1
+          fi
+          cur=$(node -p "require('./package.json').version")
+          if git ls-remote --exit-code --tags origin "refs/tags/v$cur" > /dev/null; then
+            next=$(node -e '
+              const [a, b, c] = process.argv[1].split(".").map(Number);
+              const k = process.argv[2];
+              console.log(k === "major" ? `${a + 1}.0.0` : k === "minor" ? `${a}.${b + 1}.0` : `${a}.${b}.${c + 1}`);
+            ' "$cur" "$BUMP")
+            echo "v$cur is already released → v$next ($BUMP)"
+            npm version "$next" --no-git-tag-version --ignore-scripts > /dev/null  # package.json + package-lock.json
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -am "Release v$next"
+          else
+            next=$cur
+            echo "v$cur hasn't been released yet → releasing it as is"
+          fi
+          git tag -a "v$next" -m "KenkuEnhanced v$next"
+          git push --atomic origin "HEAD:refs/heads/$DEFAULT_BRANCH" "refs/tags/v$next"
+          echo "tag=v$next" >> "$GITHUB_OUTPUT"
+          echo "### Releasing v$next" >> "$GITHUB_STEP_SUMMARY"
+
   build:
+    needs: version
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.version.outputs.tag || github.ref }}
 
       - uses: actions/setup-node@v6
         with:
@@ -32,12 +95,17 @@ jobs:
       - name: Work out the version
         id: ver
         shell: pwsh
+        env:
+          NEW_TAG: ${{ needs.version.outputs.tag }}
         run: |
           $v = (Get-Content package.json -Raw | ConvertFrom-Json).version
-          if ($env:GITHUB_REF_TYPE -eq "tag" -and $env:GITHUB_REF_NAME -ne "v$v") {
-            throw "Tag $env:GITHUB_REF_NAME doesn't match the version in package.json ($v). Change package.json first, then tag."
+          # The tag to publish: the one the version job just made, or the tag you pushed
+          $tag = if ($env:NEW_TAG) { $env:NEW_TAG } elseif ($env:GITHUB_REF_TYPE -eq "tag") { $env:GITHUB_REF_NAME } else { "" }
+          if ($tag -and $tag -ne "v$v") {
+            throw "Tag $tag doesn't match the version in package.json ($v). Change package.json first, then tag."
           }
           "version=$v" >> $env:GITHUB_OUTPUT
+          "tag=$tag" >> $env:GITHUB_OUTPUT
 
       - name: Install libraries (without development tools)
         run: npm ci --omit=dev --no-audit --no-fund
@@ -136,12 +204,13 @@ jobs:
           path: dist/
 
       - name: Publish the release
-        if: github.ref_type == 'tag'
+        if: steps.ver.outputs.tag != ''
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.ver.outputs.tag }}
         run: |
-          $tag = $env:GITHUB_REF_NAME
+          $tag = $env:TAG
           $notes = @"
           **New here?** Download **KenkuEnhanced-Setup-$tag.exe** below and run it (Windows may say "Windows protected your PC": click *More info → Run anyway*). Already installed? Click **Update available** in the dashboard.
 
