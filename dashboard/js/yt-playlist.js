@@ -556,6 +556,7 @@ const YTPlaylist = (() => {
     };
     deck.pause = () => {
       deck.wantPlay = false;
+      YouTubePanel.stopWatching(deck);
       clearTimeout(deck.playCheck);
       endCrossfade();
       if (deck.ready) deck.players.forEach((p) => p.pauseVideo());
@@ -576,6 +577,41 @@ const YTPlaylist = (() => {
       playAt(k >= 0 ? k : deck.pos, { play: true, fade: false, startSeconds: pos?.time || 0 });
     };
     deck.displayName = () => tile.title();
+
+    // Start it so it really plays – already buffered, so the fade-in isn't cut by a
+    // stall – and resolve true once it does (YouTubePanel.warmStart).
+    // pos = { index, time } to start there; null = where it is now.
+    deck.startSmooth = async (pos, alive = () => true) => {
+      if (!deck.ready) return false;
+      clearTimeout(deck.playCheck);
+      deck.wantPlay = false;
+      YouTubePanel.stopWatching(deck);
+      const mine = deck.startToken;
+      // The list may still be loading
+      for (let t = 0; t < 20000 && !current(); t += 200) {
+        if (deck.destroyed || deck.startToken !== mine || !alive()) return false;
+        await sleep(200);
+      }
+      if (!current() || deck.destroyed || deck.startToken !== mine || !alive()) return false;
+      if (pos) {
+        const k = deck.order.indexOf(pos.index);
+        if (k >= 0) deck.pos = k;
+      }
+      const vid = () => active().getVideoData?.()?.video_id;
+      const here = !pos && vid() === current().videoId && active().getPlayerState() !== S().ENDED;
+      const startAt = pos ? pos.time || 0 : here ? Math.floor(active().getCurrentTime?.() || 0) : 0;
+      return YouTubePanel.warmStart(deck, {
+        player: active,
+        ready: () => !pos && vid() === current()?.videoId,
+        load: () => playAt(deck.pos, { play: true, fade: false, startSeconds: startAt }),
+        startAt,
+        alive,
+      });
+    };
+    deck.watch = () => YouTubePanel.watch(deck, {
+      player: active,
+      reload: (time) => current() && playAt(deck.pos, { play: true, fade: false, startSeconds: time }),
+    });
     deck.setLoop = (on) => setRepeat(on ? "all" : "off"); // (scenes / older callers)
 
     function setRepeat(r) {
@@ -613,11 +649,21 @@ const YTPlaylist = (() => {
       } else {
         deck.fadeDir = "in";
         showFade();
+        const mine = (deck.fadeSeq = (deck.fadeSeq || 0) + 1);
         if (!deck.isPlaying()) {
           deck.setVolume(0, false);
-          deck.play();
+          // Fade in only once it's really playing
+          if (!(await deck.startSmooth(null, () => deck.fadeSeq === mine && deck.fadeDir === "in"))) {
+            if (deck.fadeSeq === mine && deck.fadeDir === "in") {
+              deck.fadeDir = null;
+              deck.setVolume(deck.saved.volume, false);
+            }
+            showFade();
+            return;
+          }
         }
         if (await Mixer.fade(deck, deck.saved.volume, ms)) deck.fadeDir = null;
+        if (deck.fadeSeq === mine) deck.watch();
       }
       showFade();
     };
@@ -634,6 +680,7 @@ const YTPlaylist = (() => {
       deck.saved.url = text.trim();
       deck.saved.index = 0;
       deck.saved.listTitle = title || "";
+      YouTubePanel.stopWatching(deck);
       tile.setTitle(title || "YouTube playlist");
       showLinkBox(false);
       save();
@@ -683,6 +730,8 @@ const YTPlaylist = (() => {
         }
       },
       destroy: () => {
+        deck.destroyed = true;
+        YouTubePanel.stopWatching(deck);
         clearInterval(ticker);
         clearTimeout(deck.playCheck);
         loadToken++;
@@ -700,7 +749,6 @@ const YTPlaylist = (() => {
       icon: "ytlist",
       autoable: true,
       collapsedRows: 4, // collapsed: the title bar plus the controls row
-      keepSize: true,
       // the same playlist in two scenes = the same tile (keeps playing)
       key: (c) => {
         const t = YouTubePanel.parse(c.url || "");

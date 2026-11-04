@@ -304,14 +304,21 @@ const Scenes = (() => {
 
     // --- YouTube: ▶ auto tiles start; tiles that were playing when you last left
     // this scene start again (new tiles from where they were, kept ones carry on).
+    // The fade-in waits until the video is really playing with a few seconds
+    // buffered (startSmooth), then a watchdog nudges it if it stalls (watch).
     const startDeck = async (deck, vol, name, resumeAt) => {
       (resumeAt === undefined ? inNames : resumeNames).push(name);
       await deck.whenReady();
       if (token !== runToken) return;
       deck.setVolume(0, false);
-      if (resumeAt) deck.resume(resumeAt);
-      else deck.play();
+      const ok = await deck.startSmooth(resumeAt || null, () => token === runToken);
+      if (token !== runToken) return;
+      if (!ok) {
+        deck.setVolume(vol, false); // it didn't start (e.g. an error): its slider back where it was
+        return;
+      }
       if (await fadeSource(deck, 0, vol, fadeMs, token)) deck.setVolume(vol, true);
+      deck.watch();
     };
     for (const { tile, item } of kept) {
       if (!isYT(tile.type)) continue;
@@ -425,6 +432,11 @@ const Scenes = (() => {
     render();
     const fadeMs = fadeSeconds * 1000;
     const pb = await K.api("/v1/playlist/playback").then(yours).catch(() => null);
+    // Videos still getting ready to fade in (silent so far) just stop
+    YouTubePanel.decks().filter((d) => d.starting && !d.isPlaying()).forEach((d) => {
+      d.pause();
+      d.setVolume(d.saved.volume, false); // back to its saved volume, ready for next time
+    });
     const decks = YouTubePanel.decks().filter((d) => d.isPlaying());
     // Websites that can be faded fade to silence and stay there (a website can't be
     // paused); their fade button or the Mixer brings them back.
