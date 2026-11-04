@@ -52,6 +52,7 @@ jobs:
         if: github.event_name == 'workflow_dispatch' && inputs.bump != 'test-build-only'
         env:
           BUMP: ${{ inputs.bump }}
+          GH_TOKEN: ${{ github.token }}
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           set -euo pipefail
@@ -60,7 +61,17 @@ jobs:
             exit 1
           fi
           cur=$(node -p "require('./package.json').version")
-          if git ls-remote --exit-code --tags origin "refs/tags/v$cur" > /dev/null; then
+          # Released = there's a GitHub release for it (not just a tag: a run that
+          # tagged a version but didn't get to publish it releases that version again).
+          if out=$(gh release view "v$cur" --repo "$GITHUB_REPOSITORY" --json tagName 2>&1); then
+            released=yes
+          elif grep -qi "not found" <<< "$out"; then
+            released=no
+          else
+            echo "::error::Couldn't check GitHub for a release v$cur: $out"
+            exit 1
+          fi
+          if [ "$released" = yes ]; then
             next=$(node -e '
               const [a, b, c] = process.argv[1].split(".").map(Number);
               const k = process.argv[2];
@@ -75,8 +86,12 @@ jobs:
             next=$cur
             echo "v$cur hasn't been released yet → releasing it as is"
           fi
-          git tag -a "v$next" -m "KenkuEnhanced v$next"
-          git push --atomic origin "HEAD:refs/heads/$DEFAULT_BRANCH" "refs/tags/v$next"
+          if git ls-remote --exit-code --tags origin "refs/tags/v$next" > /dev/null; then
+            echo "The tag v$next is there already (an earlier run didn't finish) → building and publishing it"
+          else
+            git tag -a "v$next" -m "KenkuEnhanced v$next"
+            git push --atomic origin "HEAD:refs/heads/$DEFAULT_BRANCH" "refs/tags/v$next"
+          fi
           echo "tag=v$next" >> "$GITHUB_OUTPUT"
           echo "### Releasing v$next" >> "$GITHUB_STEP_SUMMARY"
 
