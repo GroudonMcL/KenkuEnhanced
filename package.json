@@ -1,6 +1,6 @@
 {
   "name": "kenku-enhanced",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A dashboard for Kenku FM: control playlists/soundboards, YouTube and embedded sites from one screen.",
   "private": true,
   "license": "GPL-3.0",
