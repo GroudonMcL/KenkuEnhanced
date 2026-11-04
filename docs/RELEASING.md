@@ -45,6 +45,9 @@ You don't need Windows or Inno Setup yourself.
   after "Build the installer" in the workflow.
 - The installer's `AppId` in `installer/KenkuEnhanced.iss` must never change, or Windows will
   treat new versions as a different app.
+- `KenkuEnhanced.exe` (what the shortcuts start) is compiled from `installer/launcher/KenkuEnhanced.cs`
+  by the C# compiler that comes with Windows, in the workflow. The smoke test checks it starts the
+  helper in the background and that `launch.js --stop` stops it.
 - Node.js is bundled from the version the workflow installs (`node-version: "22"`). Bump it
   there when Node 22 reaches end of life.
 
@@ -54,10 +57,12 @@ See the comments at the top of `helper/update.js` and `helper/updater.js`. In sh
 2. It unzips into `update/staging`.
 3. It starts the **new** `updater.js` (with the new `node.exe`), then exits with code 75.
    `Start KenkuEnhanced.bat` closes its window on that code.
+   It tells the updater how the helper ran (`--restart window` = in the background behind the
+   KenkuEnhanced window, `--restart console` = in a black window), so it comes back the same way.
 4. The updater waits for the old helper to close. It moves the old files to
    `update/backup-<version>-<time>`, copies the new ones in, and starts the helper again.
    If anything fails, it rolls back.
 
-It never touches `config.json`, `data/`, `downloads/` or `update/`.
+It never touches `config.json`, `data/`, `downloads/`, `update/` or `logs/`.
 To test it locally without GitHub, set `KE_GITHUB_API` and `KE_DOWNLOAD_PREFIX` to point at a
 fake server (see the top of `helper/update.js`).

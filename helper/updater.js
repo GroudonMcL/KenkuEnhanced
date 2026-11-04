@@ -2,13 +2,13 @@
 // Swaps in a new version. Started by helper/update.js from the NEW copy in
 // update/staging/, after which the old helper exits. Not meant to be run by hand.
 //
-//   node updater.js --from <new files> --to <app folder> --pid <old helper> --old 0.1.0 --new 0.2.0
+//   node updater.js --from <new files> --to <app folder> --pid <old helper> --old 0.1.0 --new 0.2.0 [--restart window|console]
 //
 // Steps:
 //   1. Wait for the old helper to close (so its files aren't in use).
 //   2. Move each old file/folder into update/backup-<old version>-<time>/ ...
 //   3. ...and copy the new one in its place.
-//      Never touched: config.json, data/, downloads/, update/ (your settings and files).
+//      Never touched: config.json, data/, downloads/, update/, logs/ (your settings and files).
 //   4. If anything fails, put the old files back.
 //   5. Start the helper again (a new "KenkuEnhanced helper" window on Windows).
 // Everything is written to update/update.log.
@@ -24,7 +24,7 @@ const TO = path.resolve(args.to);
 const PID = Number(args.pid);
 
 // Your own stuff – never replaced or removed.
-const KEEP = new Set(["config.json", "config.broken.json", "data", "downloads", "update", ".git"]);
+const KEEP = new Set(["config.json", "config.broken.json", "data", "downloads", "update", "logs", ".git"]);
 
 const log = (msg) => console.log(`[${new Date().toISOString()}] ${msg}`);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -52,13 +52,23 @@ async function retry(what, fn) {
 }
 
 function restart() {
-  if (process.platform === "win32" && fs.existsSync(path.join(TO, "Start KenkuEnhanced.bat"))) {
+  const launch = path.join(TO, "helper", "launch.js");
+  if (args.restart === "window" && fs.existsSync(launch)) {
+    // The helper ran hidden behind the KenkuEnhanced window: start it hidden again.
+    // (The window is still open and reloads itself when the new version answers.)
+    const node = fs.existsSync(path.join(TO, "node", "node.exe")) && process.platform === "win32" ? path.join(TO, "node", "node.exe") : process.execPath;
+    spawn(node, [launch, "--background"], { cwd: TO, detached: true, stdio: "ignore", windowsHide: true }).unref();
+  } else if (process.platform === "win32" && fs.existsSync(path.join(TO, "Start KenkuEnhanced.bat"))) {
     // `start ""` opens it in a new window, just like double-clicking it.
-    spawn(process.env.ComSpec || "cmd.exe", ["/d", "/c", "start", "", "Start KenkuEnhanced.bat"], {
+    // --console keeps it in a black window, as before the update. (Updates from
+    // versions before the KenkuEnhanced window don't say, and get the new window.)
+    const bat = ["/d", "/c", "start", "", "Start KenkuEnhanced.bat", ...(args.restart === "console" ? ["--console"] : [])];
+    spawn(process.env.ComSpec || "cmd.exe", bat, {
       cwd: TO, detached: true, stdio: "ignore", windowsHide: true,
     }).unref();
   } else {
-    const out = fs.openSync(path.join(TO, "update", "helper.log"), "a");
+    fs.mkdirSync(path.join(TO, "logs"), { recursive: true });
+    const out = fs.openSync(path.join(TO, "logs", "helper.log"), "a");
     spawn(process.execPath, [path.join(TO, "helper", "server.js")], {
       cwd: TO, detached: true, stdio: ["ignore", out, out],
     }).unref();

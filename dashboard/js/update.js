@@ -9,6 +9,7 @@
 const Update = (() => {
   const $ = (id) => document.getElementById(id);
   let info = null; // last answer from /api/version
+  let reloadFor = null; // the helper was updated (e.g. from the KenkuEnhanced window): this page is old
 
   function message(text, kind = "warn") {
     const box = $("upd-message");
@@ -37,6 +38,7 @@ const Update = (() => {
   }
 
   function open() {
+    if (reloadFor) return location.reload();
     if (!info) return;
     $("upd-title").textContent = `Version ${info.latest} is available`;
     $("upd-intro").textContent = `You have version ${info.current}.`;
@@ -112,5 +114,18 @@ const Update = (() => {
     check();
   }
 
-  return { init, check };
+  // The helper now runs a newer version than this page was loaded from. Reload now
+  // if that interrupts nothing (no YouTube or website tile playing), otherwise
+  // ask with the badge. (Your scenes are saved on the helper, so nothing is lost.)
+  function helperVersion(v, quietNow) {
+    if (reloadFor === v) return;
+    reloadFor = v;
+    if (quietNow) return location.reload();
+    const badge = $("update-badge");
+    badge.hidden = false;
+    badge.textContent = `Updated to v${v}: click to reload`;
+    badge.title = "KenkuEnhanced was updated. Reload this tab to use the new version (what's playing in this tab stops for a moment).";
+  }
+
+  return { init, check, helperVersion };
 })();

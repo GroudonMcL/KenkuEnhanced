@@ -181,7 +181,10 @@ async function install() {
     const bundledNode = path.join(newRoot, "node", "node.exe");
     const nodeExe = process.platform === "win32" && fs.existsSync(bundledNode) ? bundledNode : process.execPath;
     const log = fs.openSync(path.join(UPDATE_DIR, "update.log"), "a");
-    const child = spawn(nodeExe, [path.join(newRoot, "helper", "updater.js"), "--from", newRoot, "--to", ROOT, "--pid", String(process.pid), "--old", pkg.version, "--new", latest], {
+    // --restart: start the new helper the way this one runs (hidden for the
+    // KenkuEnhanced window, or in a black window)
+    const mode = process.env.KE_MODE === "window" ? "window" : "console";
+    const child = spawn(nodeExe, [path.join(newRoot, "helper", "updater.js"), "--from", newRoot, "--to", ROOT, "--pid", String(process.pid), "--old", pkg.version, "--new", latest, "--restart", mode], {
       cwd: UPDATE_DIR,
       detached: true,
       windowsHide: true,
@@ -254,4 +257,6 @@ module.exports = function updateRouter(jsonOnly) {
 };
 
 module.exports.isNewer = isNewer;
+// true while an update is downloading/installing (the helper mustn't stop itself then)
+module.exports.isBusy = () => ["checking", "downloading", "verifying", "extracting", "restarting"].includes(job.state);
 module.exports.EXIT_FOR_UPDATE = EXIT_FOR_UPDATE;

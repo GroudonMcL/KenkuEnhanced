@@ -13,6 +13,8 @@ A dashboard for [Kenku FM](https://github.com/owlbear-rodeo/kenku-fm) that you o
   **playlist** (click a track to play it) and one per **soundboard** (sounds as pads).
 - **YouTube tiles**: as many as you like, each with its own volume and loop, so you can layer
   ambience under music. Paste a link, or **search YouTube** right in the dashboard.
+- **YouTube Playlist tiles**: the video at the top, every video of the playlist (with thumbnails)
+  below it to click, plus shuffle, repeat and a **crossfade** from one video into the next.
 - **Website tiles**: Tabletop Audio SoundPads and ambience tracks, myNoise, Ambient-Mixer and other
   ambience sites, your saved links, or any address. Sites that refuse to be embedded get an "open in
   a Kenku tab" button, or (experimental) can be passed through the helper so they show anyway.
@@ -21,6 +23,8 @@ A dashboard for [Kenku FM](https://github.com/owlbear-rodeo/kenku-fm) that you o
   sound / YouTube searches.
 - **🔎 Find sounds**: search Freesound, listen to a preview, and download sounds straight into a
   folder on your PC, with the credits written down for you.
+- **The KenkuEnhanced window**: a small window that checks for updates, installs them with one
+  click, and then opens Kenku for you.
 
 Everything you change is saved by itself (into the scene that's showing).
 
@@ -60,7 +64,8 @@ Kenku FM ── built-in browser ──► http://localhost:4000 (this dashboard
    (Node.js too). You can tick **Start the helper automatically when I sign in to Windows**.
 
 It installs into `%LOCALAPPDATA%\Programs\KenkuEnhanced` and adds **KenkuEnhanced** to the Start
-menu (and the desktop, if you leave that ticked).
+menu (and the desktop, if you leave that ticked). The sign-in option starts only the helper, in the
+background (no window).
 
 <details>
 <summary>Other ways: portable ZIP, or the source code</summary>
@@ -77,18 +82,42 @@ menu (and the desktop, if you leave that ticked).
 In Kenku FM open **Settings** (the cog) → **Remote** → switch it **on**.
 Keep the default address `127.0.0.1` and port `3333`.
 
-### 3. Start the helper
-Start **KenkuEnhanced** from the Start menu or desktop (or double-click **`Start KenkuEnhanced.bat`**
-in its folder). A black window opens and shows:
+### 3. Start KenkuEnhanced
+Start **KenkuEnhanced** from the Start menu or desktop. A small window opens:
 
-```
-  KenkuEnhanced helper is running.
-  Dashboard:  http://localhost:4000
-```
+![The KenkuEnhanced window](docs/screenshots/launcher.png)
 
-**Leave that window open** while you play. Close it to stop the helper.
+- It shows your **version** and checks GitHub for a newer one.
+- **Up to date?** It opens **Kenku FM** by itself (switch that off in ⚙).
+- **Update available?** It says so, with what's new. Click **Update now**: it downloads, checks and
+  installs the new version, restarts itself, and then opens Kenku. Your scenes, links, settings and
+  sounds are kept. If Kenku was already open, its dashboard tab reloads by itself (or shows
+  *Updated: click to reload* if something is playing in it, so the music doesn't stop).
+- **Open Kenku** / **Show Kenku** starts Kenku or brings it to the front.
+- **Restart KenkuEnhanced** shows up when a change needs a restart (e.g. a new dashboard port).
+- **⚙** sets where Kenku FM is. The default is where Kenku's installer puts it,
+  `C:\Users\<you>\AppData\Local\kenku-fm\kenku-fm.exe`. Tip: in File Explorer, Shift +
+  right-click `kenku-fm.exe` → **Copy as path**, and paste it there.
 
-> The window **is** the helper. If you close it, the dashboard stops working until you start it again.
+The helper (the part that the dashboard needs) runs **in the background**, so there's no black
+window to keep open. You can close the small window: the dashboard keeps working. Start
+KenkuEnhanced again to bring the window back. The helper stops by itself about a minute after you
+close Kenku (switch that off in ⚙), or click **Stop helper**.
+
+The window is a small Microsoft Edge app window (every Windows 10/11 PC has Edge). It uses its own
+profile in `data\launcher-window`, so it doesn't touch your normal browsing.
+
+<details>
+<summary>The old black window, and the portable / source copies</summary>
+
+- **KenkuEnhanced (console window)** in the Start menu (or `Start KenkuEnhanced.bat --console`)
+  runs the helper in a black window that shows what it's doing, as before. Leave it open while you
+  play; close it to stop. Handy for troubleshooting.
+- When the helper runs in the background, what it would have shown is written to `logs\helper.log`.
+- Copies made with Git or GitHub's **Download ZIP** don't have `KenkuEnhanced.exe`, so
+  `Start KenkuEnhanced.bat` always uses the black window there. The KenkuEnhanced window still
+  works at `http://localhost:4000/launcher.html`.
+</details>
 
 ### 4. Open the dashboard in Kenku
 In Kenku FM, click **+** to open a new browser tab, type `http://localhost:4000` and press Enter.
@@ -119,6 +148,29 @@ npm run mock-kenku
 ```
 starts a **fake** Kenku so you can try the dashboard with Kenku closed.
 Run it in a second window, with the real Kenku closed, because both use port 3333.
+
+## YouTube Playlist tiles
+In **＋ YouTube**, search with **Playlists** selected and click **＋ Playlist tile** on a result, or
+paste a playlist link (it has `list=` in it) and click **＋ Playlist tile**.
+
+- The **video** plays at the top. Below it, **every video in the playlist**, with thumbnails.
+  Click one to play it. **Find in this playlist** filters the list.
+- **⏮ ⏯ ⏭**: previous (or back to the start of the video), play/pause, next. Click the thin
+  progress bar to jump.
+- **Shuffle**: plays the playlist in a random order (a new order each time round).
+- **Repeat**: the whole playlist → this video → off (stops at the end).
+- **Crossfade** (the ✕-shaped mark): *no fade*, or 2–15 seconds. Near the end of a video, the next
+  one starts quietly and they blend into each other, sound and picture. Clicking another video also
+  crossfades into it. With repeat on *this video*, it crossfades into itself, which is nice for
+  ambience loops.
+- Volume, the fade button, **▶ auto**, the Mixer, Duck and scene switches work as on a YouTube tile.
+  A scene remembers which video it was on, and comes back to it.
+
+**How many videos?** With a YouTube key (see [YouTube search](#youtube-search-optional-free)) the
+tile lists the whole playlist (up to 1000 videos), and loading one costs 1 of your 10,000 daily
+quota units per 50 videos. Without a key it still works: it lists the first 200 videos, and the
+names come from YouTube one by one (no key needed). Videos that can't be played inside the
+dashboard are greyed out and skipped.
 
 ## Scenes
 **A scene is a saved board**: its tiles, where they are, how big, and what's in them (which
@@ -399,13 +451,19 @@ Good to know:
   save the file into your downloads folder yourself.
 
 ## Updating
-When a new version is out, an **"Update available"** badge appears at the top of the dashboard.
-Click it to see what's new, then click **Update now**. The helper downloads the new version,
-checks it isn't damaged, swaps the files and restarts itself, and the dashboard reloads. It takes
-about a minute. Kenku keeps playing in the meantime.
+When a new version is out, **the KenkuEnhanced window** says so when you start it (see
+[Start KenkuEnhanced](#3-start-kenkuenhanced)): click **Update now**. An **"Update available"**
+badge also appears at the top of the dashboard: click it to see what's new, then click
+**Update now**. Either way, the helper downloads the new version, checks it isn't damaged, swaps the
+files and restarts itself, and the dashboard reloads. It takes about a minute. Kenku keeps playing
+in the meantime.
+
+Updating from a version before the KenkuEnhanced window: your old Start-menu shortcut starts the new
+window too after the update (`Start KenkuEnhanced.bat` hands over to `KenkuEnhanced.exe`). Run the
+newest Setup.exe once if you'd like the shortcuts to show the new icon.
 
 **What's kept:** `config.json` (your settings and keys), the `data` folder (scenes, links, the
-✨ Vibe model) and `downloads` (your sounds). The previous version is kept in `update\backup-…`
+✨ Vibe model), `downloads` (your sounds) and `logs`. The previous version is kept in `update\backup-…`
 until the next update, and every step is written to `update\update.log`.
 
 If something goes wrong, the old version is put back automatically. You can always update by
@@ -423,7 +481,12 @@ installer.
 | **Update now** says the download is damaged | Your connection dropped. Click **Update now** again. Nothing was changed |
 | The update didn't come back ("didn't come back within 3 minutes") | Start KenkuEnhanced again from the Start menu. If the new version doesn't start, `update\update.log` says why; the old version is in `update\backup-…` |
 | Windows says "Windows protected your PC" | The installer isn't signed. Click **More info → Run anyway** |
-| Pill says **Helper offline** | The black helper window was closed. Start it again |
+| Pill says **Helper offline** | The helper was stopped (Stop helper, Kenku was closed, or its black window was closed). Start KenkuEnhanced again |
+| The KenkuEnhanced window says **Kenku FM not found** | Click ⚙ and paste where `kenku-fm.exe` is (Shift + right-click it → Copy as path) |
+| KenkuEnhanced shows a message box and doesn't start | It shows why (often: port 4000 is in use). More in `logs\helper.log`, or start **KenkuEnhanced (console window)** to watch |
+| The small window opens as a normal browser tab | Edge (or Chrome) wasn't found, so your normal browser was used. Everything works the same |
+| The helper keeps stopping | It stops a minute after Kenku closes. Switch off ⚙ → *Stop the helper when Kenku closes* |
+| A Playlist tile lists only 200 videos | Without a YouTube key, that's all YouTube gives. Add a key in ⚙ Settings for the whole playlist |
 | `Port 4000 is already in use` | The helper is already running in another window, or change `port` in `config.json` |
 | A website shows "can't be shown inside the dashboard" | That site forbids embedding. Use **↗ New tab**, which opens it as a Kenku tab so its audio still reaches Discord. Saved links set to Automatic will open it in a tab from now on |
 | The SoundPad list says it couldn't load | You're offline, or Tabletop Audio changed its page. Use the **Tabletop Audio SoundPads** link instead. Your saved links still work |
@@ -454,10 +517,13 @@ helper/       Node.js helper server (Express)
   links.js      saved links (data/links.json) + Tabletop Audio SoundPad and track lists
   datafile.js   safe reading/writing of the files in data/
   update.js     update check + one-click update; updater.js swaps the files
+  launch.js     what KenkuEnhanced.exe runs: starts the helper in the background, opens the window
+  launcher.js   the KenkuEnhanced window's routes: Open Kenku, restart, stop, its settings
+  youtube-playlist.js  the videos in a playlist, for Playlist tiles
   vibe.js       model files for ✨ Vibe (kept in data/models) + picture fetcher
-dashboard/    the web page (plain HTML/CSS/JS, no build step)
+dashboard/    the web page (plain HTML/CSS/JS, no build step); launcher.html = the KenkuEnhanced window
 data/         your scenes, links and the ✨ Vibe model (created automatically, not uploaded to GitHub)
-installer/    Inno Setup script for the Windows installer
+installer/    Inno Setup script for the Windows installer; launcher/ = KenkuEnhanced.exe (C#) + icon
 .github/      release.yml builds the installer + portable ZIP when a version is tagged
 docs/         PLAN.md (roadmap), kenku-remote-api.md (verified API reference), RELEASING.md
 ```

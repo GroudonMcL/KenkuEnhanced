@@ -8,6 +8,7 @@
 //   /health      → reports whether the helper and Kenku Remote are reachable
 //   /api/version → this app's version + latest version on GitHub (update check)
 //   /api/update/* → one-click update from GitHub Releases (helper/update.js)
+//   /launcher.html, /api/launcher/* → the small KenkuEnhanced window (helper/launcher.js, launch.js)
 //   /api/frame-check?url=... → does a website allow itself to be shown in an iframe?
 //   /api/youtube/search?q=...&type=video → YouTube search (needs apiKeys.youtube)
 //   /api/youtube/playlist, /api/youtube/titles → videos in a playlist (helper/youtube-playlist.js)
@@ -409,7 +410,16 @@ app.use("/api/vibe", vibe.api);
 // ---------------------------------------------------------------------------
 // 11. Update check + one-click update: /api/version, /api/update/* (helper/update.js)
 // ---------------------------------------------------------------------------
-app.use("/api", require("./update")(jsonOnly));
+const update = require("./update");
+app.use("/api", update(jsonOnly));
+
+// ---------------------------------------------------------------------------
+// 12. The small KenkuEnhanced window: open Kenku, restart, stop (helper/launcher.js)
+// ---------------------------------------------------------------------------
+app.use("/api/launcher", require("./launcher")(jsonOnly, {
+  restartNeeded: () => settingsForBrowser().restartNeeded,
+  isUpdating: update.isBusy,
+}));
 
 // ---------------------------------------------------------------------------
 // Start
@@ -423,7 +433,8 @@ app.listen(config.port, HOST, () => {
   console.log(`  Dashboard:  http://localhost:${config.port}`);
   console.log(`  Kenku API:  ${config.kenkuUrl}  (proxied at /kenku)`);
   startPassThrough();
-  console.log("  Leave this window open while you play. Close it (or Ctrl+C) to stop.");
+  if (process.env.KE_MODE === "window") console.log("  Running in the background (started by the KenkuEnhanced window).");
+  else console.log("  Leave this window open while you play. Close it (or Ctrl+C) to stop.");
   console.log("");
 }).on("error", (err) => {
   if (err.code === "EADDRINUSE") {

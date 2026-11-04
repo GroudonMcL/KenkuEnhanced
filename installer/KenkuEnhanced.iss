@@ -30,13 +30,14 @@ PrivilegesRequired=lowest
 LicenseFile={#SourceDir}\LICENSE
 OutputDir=..\dist
 OutputBaseFilename=KenkuEnhanced-Setup-v{#AppVersion}
-UninstallDisplayIcon={app}\node\node.exe
+UninstallDisplayIcon={app}\KenkuEnhanced.exe
 UninstallDisplayName=KenkuEnhanced
 Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern
-; The helper must be closed while files are replaced.
-CloseApplications=yes
+; The helper must be closed while files are replaced (it may be running in the
+; background, behind the KenkuEnhanced window).
+CloseApplications=force
 RestartApplications=no
 
 [Tasks]
@@ -49,19 +50,29 @@ Name: "startup"; Description: "Start the helper automatically when I sign in to 
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion
 
 [Icons]
-Name: "{autoprograms}\KenkuEnhanced"; Filename: "{app}\Start KenkuEnhanced.bat"; WorkingDir: "{app}"; IconFilename: "{app}\node\node.exe"; Comment: "Start the KenkuEnhanced helper, then open http://localhost:4000 in Kenku"
+; KenkuEnhanced.exe starts the helper in the background and opens the small
+; KenkuEnhanced window (version, updates, Open Kenku).
+Name: "{autoprograms}\KenkuEnhanced"; Filename: "{app}\KenkuEnhanced.exe"; WorkingDir: "{app}"; Comment: "Check for updates and open Kenku FM with the KenkuEnhanced dashboard"
+Name: "{autoprograms}\KenkuEnhanced (console window)"; Filename: "{app}\Start KenkuEnhanced.bat"; Parameters: "--console"; WorkingDir: "{app}"; IconFilename: "{app}\KenkuEnhanced.exe"; Comment: "Run the helper in a black window that shows what it does (for troubleshooting)"
 Name: "{autoprograms}\KenkuEnhanced folder"; Filename: "{app}"; Comment: "Settings, scenes and downloaded sounds"
-Name: "{autodesktop}\KenkuEnhanced"; Filename: "{app}\Start KenkuEnhanced.bat"; WorkingDir: "{app}"; IconFilename: "{app}\node\node.exe"; Tasks: desktopicon
-Name: "{userstartup}\KenkuEnhanced"; Filename: "{app}\Start KenkuEnhanced.bat"; WorkingDir: "{app}"; IconFilename: "{app}\node\node.exe"; Flags: runminimized; Tasks: startup
+Name: "{autodesktop}\KenkuEnhanced"; Filename: "{app}\KenkuEnhanced.exe"; WorkingDir: "{app}"; Tasks: desktopicon
+; At sign-in: just the helper, in the background (no window)
+Name: "{userstartup}\KenkuEnhanced"; Filename: "{app}\KenkuEnhanced.exe"; Parameters: "--background"; WorkingDir: "{app}"; Tasks: startup
 
 [Run]
-Filename: "{app}\Start KenkuEnhanced.bat"; WorkingDir: "{app}"; Description: "Start KenkuEnhanced now"; Flags: postinstall nowait skipifsilent shellexec
+Filename: "{app}\KenkuEnhanced.exe"; WorkingDir: "{app}"; Description: "Start KenkuEnhanced now"; Flags: postinstall nowait skipifsilent
+
+[UninstallRun]
+; Stop the helper if it's running in the background, so its files can be removed
+Filename: "{app}\node\node.exe"; Parameters: """{app}\helper\launch.js"" --stop"; WorkingDir: "{app}"; Flags: runhidden waituntilterminated; RunOnceId: "StopHelper"
 
 [UninstallDelete]
 ; Files the app makes itself that aren't yours: update downloads/backups and the picture model.
 Type: filesandordirs; Name: "{app}\update"
 Type: filesandordirs; Name: "{app}\data\models"
 Type: files; Name: "{app}\data\soundpads.json"
+Type: filesandordirs; Name: "{app}\data\launcher-window"
+Type: filesandordirs; Name: "{app}\logs"
 
 [Messages]
-FinishedLabel=KenkuEnhanced is installed.%n%nStart it, then in Kenku FM open a new browser tab and go to http://localhost:4000.%n%n(Turn on Kenku FM > Settings > Remote first.)
+FinishedLabel=KenkuEnhanced is installed.%n%nStart it: a small window checks for updates and opens Kenku FM. In Kenku, open a new browser tab and go to http://localhost:4000 (tip: bookmark it).%n%n(Turn on Kenku FM > Settings > Remote first.)

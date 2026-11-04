@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KenkuEnhanced</title>
+  <link rel="icon" href="img/favicon.png">
+  <link rel="stylesheet" href="css/launcher.css">
+</head>
+<body>
+  <!-- The small KenkuEnhanced window (opened by helper/launch.js). Looks like Kenku FM. -->
+  <main class="app">
+    <header class="head">
+      <img src="img/kenkuenhanced.png" alt="" class="logo">
+      <div>
+        <h1>KenkuEnhanced</h1>
+        <div class="sub" id="version">…</div>
+      </div>
+      <button type="button" class="icon-btn" id="open-settings" title="Settings">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+    </header>
+
+    <!-- Updates -->
+    <section class="card" id="update-card">
+      <div class="row">
+        <span class="dot" id="update-dot"></span>
+        <div class="grow">
+          <div class="title" id="update-title">Checking for updates…</div>
+          <div class="sub" id="update-sub"></div>
+        </div>
+      </div>
+      <div class="progress" id="update-progress" hidden><div></div></div>
+      <details class="notes" id="update-notes" hidden><summary>What's new</summary><pre></pre></details>
+      <div class="buttons">
+        <button type="button" class="btn primary" id="update-now" hidden>Update now</button>
+        <button type="button" class="btn" id="restart" hidden>Restart KenkuEnhanced</button>
+        <a class="btn text" id="update-github" href="#" target="_blank" rel="noopener" hidden>Download from GitHub</a>
+      </div>
+    </section>
+
+    <!-- Kenku -->
+    <section class="card">
+      <div class="row">
+        <span class="dot" id="kenku-dot"></span>
+        <div class="grow">
+          <div class="title" id="kenku-title">Kenku FM</div>
+          <div class="sub" id="kenku-sub"></div>
+        </div>
+      </div>
+      <div class="buttons">
+        <button type="button" class="btn primary" id="open-kenku">Open Kenku</button>
+      </div>
+    </section>
+
+    <p class="message" id="message" hidden></p>
+
+    <footer class="foot">
+      <span id="helper-state" class="sub"></span>
+      <button type="button" class="btn text small" id="stop" title="Stop the KenkuEnhanced helper. The dashboard stops working until you start KenkuEnhanced again.">Stop helper</button>
+    </footer>
+  </main>
+
+  <!-- Settings -->
+  <dialog id="settings">
+    <form method="dialog" id="settings-form">
+      <h2>Settings</h2>
+      <label class="field">
+        <span>Where Kenku FM is</span>
+        <input type="text" id="kenku-path" spellcheck="false" placeholder="C:\Users\you\AppData\Local\kenku-fm\kenku-fm.exe">
+        <small>Tip: in File Explorer, Shift + right-click kenku-fm.exe → <b>Copy as path</b>, then paste it here.</small>
+      </label>
+      <label class="switch-row">
+        <span>Open Kenku when KenkuEnhanced is up to date</span>
+        <input type="checkbox" id="auto-open" class="switch">
+      </label>
+      <label class="switch-row" id="stop-with-row">
+        <span>Stop the helper when Kenku closes</span>
+        <input type="checkbox" id="stop-with" class="switch">
+      </label>
+      <p class="sub" id="settings-error" hidden></p>
+      <div class="buttons end">
+        <button type="button" class="btn text" id="settings-cancel">Cancel</button>
+        <button type="submit" class="btn primary" id="settings-save" value="save">Save</button>
+      </div>
+      <p class="sub small-print">Dashboard: <a id="dashboard-link" href="#" target="_blank" rel="noopener"></a><br>
+        In Kenku FM, open a new tab and go to this address. (Kenku → Settings → Remote must be on.)</p>
+    </form>
+  </dialog>
+
+  <script src="js/launcher.js"></script>
+</body>
+</html>
